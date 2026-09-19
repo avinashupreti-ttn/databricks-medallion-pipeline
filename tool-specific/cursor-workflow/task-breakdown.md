@@ -53,14 +53,14 @@ T0 Setup ──► T1 Data gen ──► T2 Bronze ──► T3 Silver ──►
 - `tests/` for generator assertions
 
 **Implement**
-- [ ] Generator with seed, exact volumes, intentional defects (see DQ strategy / requirements)
-- [ ] Write CSVs under `data/`
-- [ ] Document generation and defects in notes
+- [x] Generator with seed, exact volumes, intentional defects (see DQ strategy / requirements)
+- [x] Write CSVs under `data/`
+- [x] Document generation and defects in notes
 
 **Validate / review**
-- [ ] Write tests: pytest for row counts, intentional defect counts, and **source schema/columns vs `data-model.md`** (**TS-01**)
-- [ ] Execute: run pytest locally
-- [ ] Review: results match targets; schema columns/domains present; no claimed pass without run
+- [x] Write tests: pytest for row counts, intentional defect counts, and **source schema/columns vs `data-model.md`** (**TS-01**)
+- [x] Execute: run pytest locally
+- [x] Review: results match targets; schema columns/domains present; no claimed pass without run
 
 **Acceptance**
 - [ ] DG-01–DG-05 / SET-02 satisfied; **TS-01** executed green (volumes + defects + source schema)
@@ -190,7 +190,7 @@ T0 Setup ──► T1 Data gen ──► T2 Bronze ──► T3 Silver ──►
 | Task | Implement | Tests written | Tests executed | Reviewed |
 |---|---|---|---|---|
 | T0 Setup | [ ] | [ ] | [ ] | [ ] |
-| T1 Data gen | [ ] | [ ] | [ ] | [ ] |
+| T1 Data gen | [x] | [x] | [x] | [x] |
 | T2 Bronze | [ ] | [ ] | [ ] | [ ] |
 | T3 Silver | [ ] | [ ] | [ ] | [ ] |
 | T4 Gold | [ ] | [ ] | [ ] | [ ] |

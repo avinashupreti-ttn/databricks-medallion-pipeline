@@ -23,20 +23,21 @@ alwaysApply: true
 
 ## Testing
 
+- Keep validation aligned with the relevant TS-* requirements. Follow the current task's implementation and testing scope.
 - Light **pytest** for generator/helpers locally; Spark/table validation on **serverless**.
-- Do not claim a test passed unless it was executed. Keep test-run evidence with the tests or README/setup notes—not in `debugging-notes.md`.
-- When changing behavior, add or update the matching TS-* check (see `requirement-analysis.md` / `spec.md`).
+- Do not claim a test passed unless it was executed. Keep concise test-run evidence alongside the tests, not in README or `debugging-notes.md`.
 
 ## Documentation
 
-- Start from `tool-specific/cursor-workflow/project-context.md` and `spec.md`; open other engineering docs only when the task needs them (schemas, DQ rules, design trade-offs, requirement IDs).
-- Record meaningful Cursor accept/change/reject decisions in `ai-prompts/` for the activity being worked.
+- Maintain AI prompt history through the dedicated summarization workflow when requested; do not update `ai-prompts/` during implementation unless explicitly asked.
 - Use `debugging-notes.md` for meaningful issues and fixes (symptom → layer → fix)—not routine test pass logs. Do not re-litigate closed clarifications (CL-*) without explicit user direction.
 
 ## Implementation Discipline
 
-- Before implementing a component, review its relevant requirements, data model and acceptance criteria.
-- Validate AI-generated code and logic before accepting it into the repo.
-- Prefer the smallest change that meets the request; no heavy frameworks, streaming, SCD, or production orchestration unless asked.
+- Use the documents attached to the current task as primary context. Consult additional engineering docs only when required information is missing or genuinely contradictory.
+- Treat `requirement-analysis.md` and relevant engineering docs as the implementation contract. Do not reopen the original PRD or reinterpret resolved decisions.
+- For well-scoped tasks, implement directly without repeatedly planning or revisiting decisions. Make reasonable choices within the agreed contract; flag genuine blockers rather than inventing requirements.
+- Prefer the smallest working change that meets the request. No heavy frameworks, streaming, SCD, or production orchestration unless explicitly asked.
+- Validate AI-generated code and logic before accepting it. Execute applicable checks and report actual results.
+- Respect task boundaries, existing naming, folder structure and style. Do not modify unrelated files or duplicate detailed documentation.
 - Fail fast on missing config/files with clear messages; keep error handling assessment-simple.
-- Match existing naming, folder structure, and style. Do not duplicate detailed requirements, schemas, or DQ rules into new files when a reference already exists.

@@ -6,7 +6,9 @@
 - **Silver:** Validate records, capture quality failures, and retain data for traceability.
 - **Gold:** Produce business-ready datasets from data that satisfies the required quality rules.
 
-**Implementation:** `src/silver/01`–`05` scripts → `create_silver_tables.py` builds `silver_*` tables and the metrics report.
+**Implementation:** Core checks are implemented in `src/silver/01`–`04`.
+`create_silver_tables.py` builds the Silver tables and DQ metrics report.
+`05_quality_business_logic.py` is supplementary/stretch.
 
 ---
 
@@ -66,6 +68,18 @@ Other columns are not part of this check unless extended later.
 | customers | duplicate `customer_id` | 10 rows involved in duplicate-key groups (generator documents exact group sizes) |
 | orders | duplicate `order_id` | 20 rows involved in duplicate-key groups |
 
+**Duplicate-count interpretation**
+
+Duplicate counts represent all rows involved in duplicate-key groups,
+not additional copies beyond the first occurrence.
+
+- Customers: 5 duplicate `customer_id` pairs = 10 affected rows.
+- Orders: 10 duplicate `order_id` pairs = 20 affected rows.
+
+All rows in each duplicate-key group fail uniqueness validation.
+Duplicate rows are included within the target source row counts;
+no additional rows are appended.
+
 *Test assertion:* count of `FAIL` rows with `uniqueness` in `failed_checks` matches generator documentation; minimum expectation is that all injected duplicate keys are detected.
 
 ---
@@ -99,6 +113,10 @@ Validates values against the source contract in `data-model.md`:
 
 NULL FKs are **not** RI failures (handled by completeness).
 
+**Implementation note:** Use distinct parent `customer_id` and
+`product_id` key sets for FK validation. This prevents duplicate
+parent rows from multiplying order records during joins.
+
 **On failure:** `FAIL` + `referential_integrity` in `failed_checks`.
 
 **Expected failures (intentional sample data, PRD):**
@@ -112,7 +130,9 @@ NULL FKs are **not** RI failures (handled by completeness).
 
 ## 5. Business logic (supplementary)
 
-**Script:** `05_quality_business_logic.py` (SV-05; not one of the PRD’s three named narrative checks, but required by repo layout and CL-02).
+**Script:** `05_quality_business_logic.py` (SV-05; supplementary/stretch).
+The four core checks are completeness, uniqueness, type validation,
+and referential integrity.
 
 Practical rules on **orders** (adjust in implementation if generator stays clean):
 
@@ -125,28 +145,55 @@ Practical rules on **orders** (adjust in implementation if generator stays clean
 
 **On failure:** `FAIL` + `business_logic` in `failed_checks`.
 
-**Intentional defects (PRD):** None. Expect no failures from the standard ~700-row defect set unless the generator adds bad amounts.
+**Intentional defects:** None. The standard generated dataset is expected
+to satisfy the supplementary business-logic rules.
 
 ---
 
 ## Intentional defects summary (test alignment)
 
-PRD total: **~700 problematic rows** across the corpus (some rows may fail more than one check).
+The generator follows the explicit defect counts in `requirement-analysis.md`.
 
-| Check category | Injected defect count (rows) |
+Defect groups are intentionally non-overlapping, and duplicate counts
+represent all rows involved in duplicate-key groups.
+
+| Check category | Customers | Orders | Products | Total |
+|---|---:|---:|---:|---:|
+| Completeness | 50 | 300 | 0 | 350 |
+| Uniqueness | 10 | 20 | 0 | 30 |
+| Referential integrity | 0 | 80 | 0 | 80 |
+| Type validation | 0 | 0 | 0 | 0 |
+| Business logic | 0 | 0 | 0 | 0 |
+| **Total** | **60** | **400** | **0** | **460** |
+
+**Resolved discrepancy:** The original assessment mentions approximately
+700 problematic rows, but its itemized defect counts total 460 under
+the agreed duplicate-count interpretation.
+
+The explicit per-defect counts are the implementation and testing
+contract. No additional defects are introduced to match the
+approximate headline.
+
+### Test Verification Matrix
+
+| Assertion | Expected |
 |---|---:|
-| Completeness | 50 + 100 + 200 = **350** |
-| Uniqueness | **10** (customer) + **20** (order) rows in duplicate groups |
-| Referential integrity | 50 + 30 = **80** |
-| Type validation | **0** (by design) |
-| Business logic | **0** (by design) |
+| Customer rows | 10,000 |
+| Order rows | 100,000 |
+| Product rows | 500 |
+| NULL customer emails | 50 |
+| Customer rows failing uniqueness | 10 |
+| NULL order customer IDs | 100 |
+| NULL order product IDs | 200 |
+| Unknown customer IDs | 50 |
+| Unknown product IDs | 30 |
+| Order rows failing uniqueness | 20 |
+| Distinct intentionally defective rows | 460 |
 
-**Suggested tests (TS-03):**
+Silver must detect the individual categories and retain all source rows.
 
-- Completeness fail counts match 50 / 100 / 200 on the respective columns.
-- RI fail counts match 50 / 30 for orphan FKs.
-- Uniqueness flags all duplicate-key rows; those rows are `FAIL` and absent from Gold.
-- Distinct row count with any `FAIL` may exceed 700 when defects overlap on the same row; document overlap in `DATA_GENERATION_NOTES.md`.
+With the agreed non-overlapping defect groups, the expected core-check
+FAIL counts are 60 customers, 400 orders, and 0 products.
 
 ---
 

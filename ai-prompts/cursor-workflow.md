@@ -28,13 +28,13 @@ Accepted as initial orientation doc. No further edits to this file except a late
 ## 2. Create `spec.md`
 
 **Prompt / Request**  
-Create implementation spec broken down by data generation, Bronze, Silver, Gold, dashboard, and testing. For each: files/modules, inputs, outputs, key behavior, acceptance criteria; reference requirement IDs. Follow agreed serverless design; keep scope practical for a 1-day implementation; avoid duplicating schemas, DQ rules, or architecture already in other docs.
+Create implementation spec broken down by data generation, Bronze, Silver, Gold, dashboard, and testing. For each: files/modules, inputs, outputs, key behavior, acceptance criteria; reference requirement IDs. Follow agreed serverless design; keep scope practical for implementation; avoid duplicating schemas, DQ rules, or architecture already in other docs.
 
 **Cursor Output**  
-Component-wise `spec.md` with IDs, core vs stretch Silver checks, PASS-only Gold, Gold-only dashboard queries, TS mapping, supporting setup, and—**added by Cursor**—a suggested 1-day build order section.
+Component-wise `spec.md` with IDs, core vs stretch Silver checks, PASS-only Gold, Gold-only dashboard queries, TS mapping, supporting setup.
 
 **Review / Decision**  
-Accepted structure and component checklists. Cursor’s 1-day build-order section was later removed by your refinement (§3); sequencing deferred to `task-breakdown.md`.
+Accepted structure and component checklists. Sequencing deferred to `task-breakdown.md`.
 
 ---
 
@@ -44,8 +44,7 @@ Accepted structure and component checklists. Cursor’s 1-day build-order sectio
 Spec mixed sequencing with implementation detail; dashboard and artifact bars needed to match assessment intent; `requirement-analysis.md` was under-described as “IDs only.”
 
 **Changes Requested** *(your decisions)*  
-- Remove suggested 1-day build order; sequencing belongs in `task-breakdown.md`.  
-- Remove 1-day deadline wording from the spec.  
+- Sequencing belongs in `task-breakdown.md`.  
 - Reference docs: `requirement-analysis.md` = requirements, acceptance criteria, resolved clarifications (not IDs alone).  
 - Dashboard acceptance: actual Databricks SQL Dashboard with 3+ visualizations.  
 - Brief reference to AI workflow / submission artifacts.  
@@ -179,7 +178,7 @@ Pending your review.
 | Artifact | Iterations |
 |---|---|
 | `project-context.md` | Created (§1); link updated after rename (§9) |
-| `spec.md` | Created (§2) → refined: no 1-day order, dashboard + artifacts (§3) |
+| `spec.md` | Created (§2) → refined: dashboard + artifacts (§3) |
 | `project.mdc` | Created (§4) → refined: docs-as-needed, evidence vs debugging (§5) |
 | `task-breakdown.md` | Created (§6) → refined twice (§7, §8) |
 | `documentation.md` | Renamed to `requirements-and-design.md` (§9) |

@@ -50,7 +50,7 @@ Stages are independently rerunnable (overwrite/replace per stage). No DQ in Bron
 ## Key Decisions
 
 - **snake_case** column names end-to-end (CSV → Gold).
-- Exact sample volumes: **10,000 / 100,000 / 500** rows, with PRD intentional defects.
+- Exact sample volumes: **10,000 / 100,000 / 500** rows; intentional defects follow `data-quality-strategy.md`.
 - Silver **retains** bad rows; set `quality_check_result` / `failed_checks`.
 - **Core Silver checks:** completeness, uniqueness, type validation, referential integrity. Business logic (`05_…`) is **stretch**.
 - **Gold:** four tables including daily/weekly trends; **PASS-only** inputs (failed and duplicate-key rows excluded).
@@ -68,7 +68,7 @@ Stages are independently rerunnable (overwrite/replace per stage). No DQ in Bron
 | Integration | Databricks serverless | Bronze → Silver → Gold counts, DQ detection, Gold excludes FAIL/duplicates |
 | E2E | One serverless run | Documented in README / debugging notes |
 
-Only claim tests that have actually been executed (TS-08). Map TS-01–TS-07 in `requirements-analysis.md` / `design-notes.md`.
+Only claim tests that have actually been executed (TS-08). Map TS-01–TS-07 in `requirement-analysis.md` / `design-notes.md`.
 
 ---
 
@@ -94,4 +94,4 @@ Consult the right doc; do not duplicate large sections into prompts or new files
 | `design-notes.md` | How to implement layers, PASS-only Gold, segmentation approach, rerun/testing/debug trade-offs |
 | `ai-prompts/requirements-and-design.md` | Prior Cursor decisions on planning artifacts (avoid re-litigating closed CLs) |
 
-**Default workflow for Cursor:** read this context → open the relevant reference doc for detail → implement against PRD repo structure → keep changes minimal and consistent with existing decisions.
+**Default workflow for Cursor:** Implement against the attached task context and agreed engineering documents. Do not reopen resolved requirements or expand the current task's scope.

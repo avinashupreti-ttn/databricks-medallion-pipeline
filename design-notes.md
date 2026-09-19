@@ -1,7 +1,7 @@
 # Design Notes
 
 Pipeline implementation on **Databricks serverless** compute.  
-**Schemas:** `data-model.md` · **DQ rules & metrics:** `data-quality-strategy.md` · **Requirements:** `requirements-analysis.md`
+**Schemas:** `data-model.md` · **DQ rules & metrics:** `data-quality-strategy.md` · **Requirements:** `requirement-analysis.md`
 
 ---
 
@@ -95,14 +95,15 @@ Architecture unchanged: **pytest** for light unit tests; **Databricks serverless
 |---|---|
 | **TS-01** | `pytest` on `generate_sample_data.py` — intended defect counts per `data-quality-strategy.md`. |
 | **TS-02** | Serverless: Bronze row counts vs 10,000 / 100,000 / 500. |
-| **TS-03** | Serverless: Silver detects intentional defects (~700 corpus; per-category counts in DQ doc). |
+| **TS-03** | Serverless: Silver detects the explicit defect counts and 460 distinct intentionally defective rows defined in the DQ strategy. |
 | **TS-04** | Serverless or unit tests: sample known-good rows remain `PASS` on core checks. |
 | **TS-05** | Serverless: Gold aggregates sane; no `FAIL` / duplicate-key rows in Gold outputs. |
 | **TS-06** | Meaningful test tier provided through pytest-based data quality/unit tests, with Databricks integration validation for the pipeline. |
 | **TS-07** | One serverless run Bronze → Silver → Gold (notebook or sequential scripts). |
 | **TS-08** | Record only executed tests in repo notes; no claimed passes without a run. |
 
-Use `pytest -m "not databricks"` (or similar) to skip integration markers locally. Log serverless runs in `debugging-notes.md`.
+Use `pytest -m "not databricks"` (or similar) to skip integration markers locally. Keep concise test execution summaries alongside the tests.
+Use `debugging-notes.md` for meaningful failures and fixes.
 
 ---
 

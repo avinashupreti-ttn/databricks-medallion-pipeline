@@ -45,7 +45,7 @@ Segmentation thresholds derived from sample data are documented in `design-notes
 | Defect | Expected Count | Validation Type |
 |---|---:|---|
 | NULL `email` | 50 | Completeness |
-| Duplicate `customer_id` | 10 duplicate occurrences | Uniqueness |
+| Duplicate `customer_id` | 10 affected rows (5 pairs) | Uniqueness |
 
 **Orders**
 
@@ -55,7 +55,7 @@ Segmentation thresholds derived from sample data are documented in `design-notes
 | NULL `product_id` | 200 | Completeness |
 | Unknown `customer_id` | 50 | Referential integrity |
 | Unknown `product_id` | 30 | Referential integrity |
-| Duplicate `order_id` | 20 duplicate occurrences | Uniqueness |
+| Duplicate `order_id` | 20 affected rows (10 pairs) | Uniqueness |
 
 Uniqueness applies per entity: duplicate `customer_id` in customers; duplicate `order_id` in orders. Duplicate rows must be flagged in Silver and excluded from Gold (see **CL-05**).
 
@@ -81,7 +81,7 @@ Uniqueness applies per entity: duplicate `customer_id` in customers; duplicate `
 | SV-02 | **Uniqueness** (`02_quality_uniqueness.py`): No duplicate `customer_id` (`customers`) or `order_id` (`orders`). Duplicates are recorded in validation output and fail the row. |
 | SV-03 | **Referential integrity** (`04_quality_referential_integrity.py`): `orders.customer_id` and `orders.product_id` must exist in parent customer/product data when non-NULL. |
 | SV-04 | **Type validation** (`03_quality_type_validation.py`): Values conform to expected types and source contract (`data-model.md`). |
-| SV-05 | **Business logic** (`05_quality_business_logic.py`): Defensible rules on order facts (e.g. amounts, quantities); specifics in `data-quality-strategy.md`. |
+| SV-05 | **Supplementary business logic** (`05_quality_business_logic.py`): Optional defensible rules on order facts; specifics in `data-quality-strategy.md`. |
 | SV-06 | Flag bad rows; do not delete them. Set `quality_check_result` and `failed_checks` per `data-model.md`. |
 | SV-07 | Produce a **data quality report** with pass/fail or % passed for each validation category. |
 | SV-08 | Quality checks must detect the intentional defects in the sample data. |
@@ -135,7 +135,7 @@ NULL foreign keys (completeness) and unknown non-NULL foreign keys (referential 
 |---|---|
 | TS-01 | Verify the data generator produces the intended quality defects. |
 | TS-02 | Verify Bronze ingestion preserves expected source content and row counts (10,000 / 100,000 / 500). |
-| TS-03 | Verify Silver checks detect intentional defects (~700 problematic rows). |
+| TS-03 | Verify Silver detects the explicit intentional defect counts defined in `data-quality-strategy.md`, including 460 distinct defective rows in the standard non-overlapping dataset. |
 | TS-04 | Verify clearly valid records are not incorrectly failed by main checks. |
 | TS-05 | Validate important Gold aggregation results; confirm failed/duplicate Silver rows are absent from Gold. |
 | TS-06 | Provide at least one meaningful test tier (data quality tests, pipeline tests, or equivalent). |
@@ -150,7 +150,7 @@ Testing stays lightweight; a large framework or local Spark cluster is not requi
 
 | ID | Requirement |
 |---|---|
-| ART-01 | `requirements-analysis.md`, `design-notes.md`, `data-model.md`, `data-quality-strategy.md`. |
+| ART-01 | `requirement-analysis.md`, `design-notes.md`, `data-model.md`, `data-quality-strategy.md`. |
 | ART-02 | `candidate-info.md` per PRD template. |
 | ART-03 | `tool-workflow.md` (Part A: AI workflow foundation). |
 | ART-04 | `debugging-notes.md`, `reflection.md`, `final-ai-usage-summary.md`. |
@@ -217,7 +217,7 @@ Decisions below drive implementation; they supersede earlier open questions.
 | ID | Decision |
 |---|---|
 | **CL-01** | **Four** Gold aggregation tables: Sales by Product, Revenue by Customer, **Daily/Weekly Trends** (`gold_daily_weekly_trends`), Customer Segmentation. |
-| **CL-02** | Silver implements **five** validation areas via repo scripts: completeness, uniqueness, **type validation** (`03_quality_type_validation.py`), referential integrity, **business logic** (`05_quality_business_logic.py`). |
+| **CL-02** | Silver implements four core validation areas: completeness, uniqueness, type validation, and referential integrity. `05_quality_business_logic.py` is supplementary/stretch. |
 | **CL-03** | Behavior segments (High-Value / Repeat / One-Time / Inactive) are assigned using **order value** and order facts from the sample data; numeric cutoffs documented in `design-notes.md`. |
 | **CL-04** | Rows that fail Silver validation (`quality_check_result` = `FAIL`) **must not** be loaded into Gold. |
 | **CL-05** | Duplicate `customer_id` / `order_id` rows are **flagged** in uniqueness checks (`failed_checks` includes `uniqueness`) and **excluded from Gold** (no duplicate survives into analytics). |
@@ -231,7 +231,7 @@ The submission is complete when:
 
 1. Three source CSVs exist at 10,000 / 100,000 / 500 rows with PRD intentional quality issues; generator behavior is documented.
 2. Bronze ingests all three sources as raw data with ingestion metadata and sensible input errors.
-3. Silver runs all five validation areas (CL-02), flags bad rows, and delivers a quality report with % or pass/fail by category.
+3. Silver runs all four core validation areas (CL-02), flags bad rows, and delivers a quality report with % or pass/fail by category. Business-logic validation is supplementary/stretch.
 4. Tests show intentional defects are caught; failed and duplicate rows do not appear in Gold.
 5. Gold delivers **four** aggregation tables (CL-01) with verifiable calculations.
 6. Databricks SQL Dashboard has ≥3 tiles; queries read from Gold only (CL-06); setup guide is in repo.

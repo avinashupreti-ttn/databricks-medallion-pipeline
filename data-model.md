@@ -3,7 +3,7 @@
 Medallion schemas for the e-commerce sales pipeline. Logical types use Spark/Delta-friendly names.
 Physical table names follow `bronze_*`, `silver_*`, `gold_*` under a configurable catalog/schema (see `database/schema.sql`).
 
-**Naming:** All column names use **snake_case** in CSV headers, Bronze, Silver, and Gold (e.g. `customer_id`, `order_date`). Same names in `requirements-analysis.md` and Silver requirements (SV-*).
+**Naming:** All column names use **snake_case** in CSV headers, Bronze, Silver, and Gold (e.g. `customer_id`, `order_date`). Same names in `requirement-analysis.md` and Silver requirements (SV-*).
 
 **Row counts (exact):** 10,000 customers, 100,000 orders, 500 products per file before intentional defects alter uniqueness counts as documented below.
 
@@ -66,7 +66,7 @@ Files: `data/customers.csv`, `data/orders.csv`, `data/products.csv`.
 
 | Column | Type | PK/FK | Nullable | Domain / notes |
 |---|---|---|---|---|
-| `order_id` | INT | PK | No | 20 intentional duplicate keys |
+| `order_id` | INT | PK | No | 20 rows across 10 duplicate-key pairs |
 | `customer_id` | INT | FK → customers | Yes | 100 intentional NULLs; 50 orphan IDs |
 | `order_date` | DATE | | No | |
 | `product_id` | INT | FK → products | Yes | 200 intentional NULLs; 30 orphan IDs |

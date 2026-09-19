@@ -168,7 +168,7 @@ Pipeline code alone is not complete. Maintain AI and submission evidence alongsi
 - `tool-workflow.md`, `candidate-info.md`
 - Lifecycle docs already in repo (requirements, design, data model, DQ strategy)
 - `debugging-notes.md`, `reflection.md`, `final-ai-usage-summary.md`
-- Full `ai-prompts/` history by activity
+- Full prompt history organized by activity under ai-prompts/
 - Cursor workflow under `tool-specific/cursor-workflow/` (`project-context.md`, this `spec.md`, rules/instructions, `task-breakdown.md`)
 
 Validate AI-generated code before accepting it. Do not expand scope into streaming, MERGE/SCD, or production job frameworks.
