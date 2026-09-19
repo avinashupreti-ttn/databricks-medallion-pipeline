@@ -1,0 +1,42 @@
+---
+description: Medallion pipeline standards for Databricks serverless implementation
+alwaysApply: true
+---
+
+# Project Rules
+
+## Architecture
+
+- Target **Databricks serverless** (PySpark / Spark SQL, Delta, Unity Catalog). Keep catalog, schema, and landing paths configurable.
+- Honor Medallion boundaries:
+  - **Bronze** — raw ingest + metadata only; no cleansing or DQ fixes
+  - **Silver** — validate, flag, retain all rows; produce DQ metrics
+  - **Gold** — aggregations from Silver `PASS` only; no new DQ rules
+  - **Dashboard** — queries **Gold only**
+- Prefer existing `src/` layout and overwrite/replace reruns over incremental/MERGE designs.
+
+## Data
+
+- Use **snake_case** column names end-to-end. Do not invent schemas or defect counts—consult `data-model.md` and `data-quality-strategy.md`.
+- Synthetic data only; never introduce real PII, secrets, or credentials.
+- Core Silver checks: completeness, uniqueness, type validation, referential integrity. Business-logic check is stretch unless requested.
+
+## Testing
+
+- Light **pytest** for generator/helpers locally; Spark/table validation on **serverless**.
+- Do not claim a test passed unless it was executed. Keep test-run evidence with the tests or README/setup notes—not in `debugging-notes.md`.
+- When changing behavior, add or update the matching TS-* check (see `requirement-analysis.md` / `spec.md`).
+
+## Documentation
+
+- Start from `tool-specific/cursor-workflow/project-context.md` and `spec.md`; open other engineering docs only when the task needs them (schemas, DQ rules, design trade-offs, requirement IDs).
+- Record meaningful Cursor accept/change/reject decisions in `ai-prompts/` for the activity being worked.
+- Use `debugging-notes.md` for meaningful issues and fixes (symptom → layer → fix)—not routine test pass logs. Do not re-litigate closed clarifications (CL-*) without explicit user direction.
+
+## Implementation Discipline
+
+- Before implementing a component, review its relevant requirements, data model and acceptance criteria.
+- Validate AI-generated code and logic before accepting it into the repo.
+- Prefer the smallest change that meets the request; no heavy frameworks, streaming, SCD, or production orchestration unless asked.
+- Fail fast on missing config/files with clear messages; keep error handling assessment-simple.
+- Match existing naming, folder structure, and style. Do not duplicate detailed requirements, schemas, or DQ rules into new files when a reference already exists.
