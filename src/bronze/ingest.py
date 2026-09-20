@@ -235,11 +235,16 @@ def split_sql(text: str) -> list[str]:
 
 
 def render_schema_statements(
-    catalog: str, bronze_schema: str, silver_schema: str
+    catalog: str,
+    bronze_schema: str,
+    silver_schema: str,
+    gold_schema: str | None = None,
 ) -> list[str]:
     validate_identifier(catalog, "catalog")
     validate_identifier(bronze_schema, "bronze_schema")
     validate_identifier(silver_schema, "silver_schema")
+    if gold_schema:
+        validate_identifier(gold_schema, "gold_schema")
     if not SCHEMA_PATH.is_file():
         raise FileNotFoundError(f"Schema file not found: {SCHEMA_PATH}")
     rendered = (
@@ -248,20 +253,34 @@ def render_schema_statements(
         .replace("__BRONZE_SCHEMA__", bronze_schema)
         .replace("__SILVER_SCHEMA__", silver_schema)
     )
+    if gold_schema:
+        rendered = rendered.replace("__GOLD_SCHEMA__", gold_schema)
+    statements = split_sql(rendered)
+    if not gold_schema:
+        statements = [s for s in statements if "__GOLD_SCHEMA__" not in s]
+    joined = "\n".join(statements)
     if (
-        "__CATALOG__" in rendered
-        or "__BRONZE_SCHEMA__" in rendered
-        or "__SILVER_SCHEMA__" in rendered
+        "__CATALOG__" in joined
+        or "__BRONZE_SCHEMA__" in joined
+        or "__SILVER_SCHEMA__" in joined
+        or "__GOLD_SCHEMA__" in joined
     ):
         raise RuntimeError("database/schema.sql has unsubstituted placeholders.")
-    statements = split_sql(rendered)
     if not statements:
         raise RuntimeError(f"Schema file has no statements: {SCHEMA_PATH}")
     return statements
 
 
-def apply_schema(spark, catalog: str, bronze_schema: str, silver_schema: str) -> None:
-    statements = render_schema_statements(catalog, bronze_schema, silver_schema)
+def apply_schema(
+    spark,
+    catalog: str,
+    bronze_schema: str,
+    silver_schema: str,
+    gold_schema: str | None = None,
+) -> None:
+    statements = render_schema_statements(
+        catalog, bronze_schema, silver_schema, gold_schema
+    )
     for statement in statements:
         try:
             spark.sql(statement)
@@ -270,7 +289,6 @@ def apply_schema(spark, catalog: str, bronze_schema: str, silver_schema: str) ->
                 "Failed to apply database/schema.sql for "
                 f"{catalog}.{bronze_schema} / {catalog}.{silver_schema}: {exc}"
             ) from exc
-
 
 def _spark_schema(fields: tuple):
     from pyspark.sql.types import (
@@ -330,6 +348,7 @@ def ingest_entity(
     batch_id: str,
     *,
     prepare: bool = True,
+    gold_schema: str | None = None,
 ) -> int:
     if entity not in ENTITIES:
         raise ValueError(f"Unknown Bronze entity: {entity}")
@@ -341,7 +360,7 @@ def ingest_entity(
     path = join_landing_path(landing_path, spec["filename"])
     if prepare:
         assert_source_ready(path, spec["fields"], spark)
-        apply_schema(spark, catalog, bronze_schema, silver_schema)
+        apply_schema(spark, catalog, bronze_schema, silver_schema, gold_schema)
     frame = read_landing_csv(spark, path, spec["fields"])
     row_count = frame.count()
     if row_count == 0:
@@ -383,6 +402,7 @@ def ingest_all(
     silver_schema: str,
     landing_path: str,
     batch_id: str,
+    gold_schema: str | None = None,
 ) -> dict:
     """Validate every source file before writing any Bronze table."""
     validate_identifier(catalog, "catalog")
@@ -392,7 +412,7 @@ def ingest_all(
     for spec in ENTITIES.values():
         path = join_landing_path(landing_path, spec["filename"])
         assert_source_ready(path, spec["fields"], spark)
-    apply_schema(spark, catalog, bronze_schema, silver_schema)
+    apply_schema(spark, catalog, bronze_schema, silver_schema, gold_schema)
     counts = {}
     for entity in ENTITIES:
         counts[entity] = ingest_entity(
@@ -404,6 +424,7 @@ def ingest_all(
             landing_path,
             batch_id,
             prepare=False,
+            gold_schema=gold_schema,
         )
     summary = ", ".join(f"{name}={count}" for name, count in counts.items())
     print(f"Bronze ingestion complete: {summary}", flush=True)
@@ -462,6 +483,7 @@ def run_main(entity: str | None = None, argv: list[str] | None = None) -> int:
                 config.silver_schema,
                 config.landing_path,
                 batch_id,
+                config.gold_schema,
             )
         else:
             ingest_entity(
@@ -472,6 +494,7 @@ def run_main(entity: str | None = None, argv: list[str] | None = None) -> int:
                 config.silver_schema,
                 config.landing_path,
                 batch_id,
+                gold_schema=config.gold_schema,
             )
     except HANDLED_ERRORS as exc:
         print(f"Error: {exc}", file=sys.stderr)

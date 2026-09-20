@@ -55,9 +55,20 @@ Retain all rows; set `quality_check_result` / `failed_checks` per `data-model.md
 
 **Design decision — PASS-only Gold (CL-04, CL-05):** Every Gold query uses only Silver rows with `quality_check_result` = `PASS`, including dimension joins. Failed and duplicate-key rows stay in Silver for audit but never feed metrics.
 
-**Segmentation (CL-03, high level):** Behavior `segment_type` (High-Value / Repeat / One-Time / Inactive) is derived from qualifying order revenue on the generated dataset. **High-Value** uses a threshold at the **90th percentile of customer revenue** in that dataset; remaining segment rules stay simple and are implemented in `04_customer_segmentation.sql` (order count / activity), not fixed global constants.
+**Segmentation (CL-03):** Behavior `segment_type` is assigned from PASS Silver customers and their PASS order facts (order count and sum of `total_amount`). Rules in `04_customer_segmentation.sql`:
 
-Revenue fields use qualifying order `total_amount`; `lifetime_value_actual` is computed from those orders (`data-model.md`).
+1. Per PASS customer: `order_count` and `total_revenue` from PASS orders only (no orders → both 0).
+2. **High-Value threshold:** 90th percentile of `total_revenue` among PASS customers with `order_count` > 0 (recomputed each run).
+3. Mutually exclusive assignment (first match wins):
+   - **Inactive** — `order_count` = 0
+   - **High-Value** — `total_revenue` ≥ P90 threshold
+   - **Repeat** — `order_count` ≥ 2
+   - **One-Time** — `order_count` = 1
+4. Gold table is one row per `segment_type` with `customer_count`, `avg_revenue`, `total_revenue`.
+
+**Trends (CL-01 / GD-03):** `period_grain` is `DAY` (`order_date`) or `WEEK`. Week start is **ISO Monday** via Spark `date_trunc('WEEK', order_date)`.
+
+Revenue fields use qualifying order `total_amount`; `lifetime_value_actual` is the sum of those amounts for the customer (`data-model.md`).
 
 `create_gold_tables.py` runs Gold SQL in repo order and overwrites Gold tables (see rerun).
 

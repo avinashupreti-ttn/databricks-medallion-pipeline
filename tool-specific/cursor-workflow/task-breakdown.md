@@ -124,11 +124,11 @@ T0 Setup ──► T1 Data gen ──► T2 Bronze ──► T3 Silver ──►
 - `01_sales_by_product.sql`, `02_revenue_by_customer.sql`, `03_daily_weekly_trends.sql`, `04_customer_segmentation.sql`, `create_gold_tables.py`
 
 **Implement**
-- [ ] Four Gold tables; PASS-only inputs (facts + dimension joins)
-- [ ] Segmentation / trends per design-notes (no re-spec here)
+- [x] Four Gold tables; PASS-only inputs (facts + dimension joins)
+- [x] Segmentation / trends per design-notes (no re-spec here)
 
 **Validate / review**
-- [ ] Write tests: serverless checks for aggregate sanity and absence of FAIL/duplicate keys in Gold (**TS-05**)
+- [x] Write tests: serverless checks for aggregate sanity and absence of FAIL/duplicate keys in Gold (**TS-05**)
 - [ ] Execute: Gold on serverless; run integration checks
 - [ ] Review: spot-check sums/counts against PASS Silver
 
@@ -193,6 +193,6 @@ T0 Setup ──► T1 Data gen ──► T2 Bronze ──► T3 Silver ──►
 | T1 Data gen | [x] | [x] | [x] | [x] |
 | T2 Bronze | [x] | [x] | [ ] | [ ] |
 | T3 Silver | [x] | [x] | [ ] | [ ] |
-| T4 Gold | [ ] | [ ] | [ ] | [ ] |
+| T4 Gold | [x] | [x] | [ ] | [ ] |
 | T5 Dashboard | [ ] | [ ] | [ ] | [ ] |
 | T6 Final | [ ] | [ ] | [ ] | [ ] |

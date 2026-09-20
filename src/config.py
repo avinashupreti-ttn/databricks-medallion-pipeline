@@ -1,7 +1,8 @@
 """Runtime configuration for Databricks serverless.
 
 Required settings: catalog, bronze_schema, silver_schema, landing_path.
-Optional: gold_schema (reserved for Gold; not used by Bronze/Silver yet).
+Optional for Bronze/Silver: gold_schema (applied in schema.sql when set).
+Required for Gold: gold_schema (e.g. c1_gold).
 
 Resolution order: CLI arguments, then environment variables, then
 Databricks widgets when a Spark session is already active.

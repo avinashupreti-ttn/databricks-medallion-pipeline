@@ -18,6 +18,7 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 ENTRY_POINTS = (
     REPO_ROOT / "src" / "bronze" / "ingest_all.py",
     REPO_ROOT / "src" / "silver" / "create_silver_tables.py",
+    REPO_ROOT / "src" / "gold" / "create_gold_tables.py",
 )
 
 

@@ -374,6 +374,7 @@ def test_schema_sql_matches_bronze_contract():
     assert "CREATE CATALOG" not in sql
     assert "CREATE SCHEMA IF NOT EXISTS `__CATALOG__`.`__BRONZE_SCHEMA__`" in sql
     assert "CREATE SCHEMA IF NOT EXISTS `__CATALOG__`.`__SILVER_SCHEMA__`" in sql
+    assert "CREATE SCHEMA IF NOT EXISTS `__CATALOG__`.`__GOLD_SCHEMA__`" in sql
     assert CUSTOMER_FIELDS == CONTRACT_CUSTOMERS
     assert ORDER_FIELDS == CONTRACT_ORDERS
     assert PRODUCT_FIELDS == CONTRACT_PRODUCTS
@@ -395,6 +396,7 @@ def test_schema_sql_matches_bronze_contract():
     assert "__CATALOG__" not in rendered
     assert "__BRONZE_SCHEMA__" not in rendered
     assert "__SILVER_SCHEMA__" not in rendered
+    assert "__GOLD_SCHEMA__" not in rendered
     assert "`workspace`.`c1_bronze`.`bronze_customers`" in rendered
     assert "`workspace`.`c1_bronze`.`bronze_orders`" in rendered
     assert "`workspace`.`c1_bronze`.`bronze_products`" in rendered

@@ -1,4 +1,4 @@
-# Minimal Databricks Asset Bundle for Bronze → Silver on serverless.
+# Minimal Databricks Asset Bundle for Bronze → Silver → Gold on serverless.
 # Workspace host is resolved from the Databricks CLI profile passed with
 # --profile (or the active profile). Do not commit credentials.
 
@@ -18,6 +18,9 @@ variables:
   silver_schema:
     description: Schema for Silver Delta tables and dq_metrics_report
     default: c1_silver
+  gold_schema:
+    description: Schema for Gold aggregation Delta tables
+    default: c1_gold
   landing_path:
     description: Volume directory containing customers.csv, orders.csv, products.csv
     default: /Volumes/workspace/c1_landing/landing
@@ -44,4 +47,5 @@ targets:
       catalog: workspace
       bronze_schema: c1_bronze
       silver_schema: c1_silver
+      gold_schema: c1_gold
       landing_path: /Volumes/workspace/c1_landing/landing

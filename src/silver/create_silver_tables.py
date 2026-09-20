@@ -192,11 +192,16 @@ def split_sql(text: str) -> list[str]:
 
 
 def render_schema_statements(
-    catalog: str, bronze_schema: str, silver_schema: str
+    catalog: str,
+    bronze_schema: str,
+    silver_schema: str,
+    gold_schema: str | None = None,
 ) -> list[str]:
     validate_identifier(catalog, "catalog")
     validate_identifier(bronze_schema, "bronze_schema")
     validate_identifier(silver_schema, "silver_schema")
+    if gold_schema:
+        validate_identifier(gold_schema, "gold_schema")
     if not SCHEMA_PATH.is_file():
         raise FileNotFoundError(f"Schema file not found: {SCHEMA_PATH}")
     rendered = (
@@ -205,20 +210,34 @@ def render_schema_statements(
         .replace("__BRONZE_SCHEMA__", bronze_schema)
         .replace("__SILVER_SCHEMA__", silver_schema)
     )
+    if gold_schema:
+        rendered = rendered.replace("__GOLD_SCHEMA__", gold_schema)
+    statements = split_sql(rendered)
+    if not gold_schema:
+        statements = [s for s in statements if "__GOLD_SCHEMA__" not in s]
+    joined = "\n".join(statements)
     if (
-        "__CATALOG__" in rendered
-        or "__BRONZE_SCHEMA__" in rendered
-        or "__SILVER_SCHEMA__" in rendered
+        "__CATALOG__" in joined
+        or "__BRONZE_SCHEMA__" in joined
+        or "__SILVER_SCHEMA__" in joined
+        or "__GOLD_SCHEMA__" in joined
     ):
         raise RuntimeError("database/schema.sql has unsubstituted placeholders.")
-    statements = split_sql(rendered)
     if not statements:
         raise RuntimeError(f"Schema file has no statements: {SCHEMA_PATH}")
     return statements
 
 
-def apply_schema(spark, catalog: str, bronze_schema: str, silver_schema: str) -> None:
-    for statement in render_schema_statements(catalog, bronze_schema, silver_schema):
+def apply_schema(
+    spark,
+    catalog: str,
+    bronze_schema: str,
+    silver_schema: str,
+    gold_schema: str | None = None,
+) -> None:
+    for statement in render_schema_statements(
+        catalog, bronze_schema, silver_schema, gold_schema
+    ):
         try:
             spark.sql(statement)
         except Exception as exc:
@@ -415,7 +434,11 @@ def write_metrics_report(spark, catalog: str, silver_schema: str, silver: dict) 
 
 
 def create_silver_tables(
-    spark, catalog: str, bronze_schema: str, silver_schema: str
+    spark,
+    catalog: str,
+    bronze_schema: str,
+    silver_schema: str,
+    gold_schema: str | None = None,
 ) -> dict:
     validate_identifier(catalog, "catalog")
     validate_identifier(bronze_schema, "bronze_schema")
@@ -423,7 +446,7 @@ def create_silver_tables(
     # Check Bronze before schema.sql. Applying schema first would CREATE empty
     # bronze_* tables and hide a missing ingestion.
     _require_bronze(spark, catalog, bronze_schema)
-    apply_schema(spark, catalog, bronze_schema, silver_schema)
+    apply_schema(spark, catalog, bronze_schema, silver_schema, gold_schema)
     silver = build_silver_frames(spark, catalog, bronze_schema)
     counts = write_silver_tables(spark, catalog, silver_schema, silver)
     write_metrics_report(spark, catalog, silver_schema, silver)
@@ -476,6 +499,7 @@ def run_main(argv: list[str] | None = None) -> int:
             config.catalog,
             config.bronze_schema,
             config.silver_schema,
+            config.gold_schema,
         )
     except HANDLED_ERRORS as exc:
         print(f"Error: {exc}", file=sys.stderr)

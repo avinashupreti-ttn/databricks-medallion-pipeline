@@ -1,7 +1,7 @@
 # Databricks Asset Bundle — deployment guide
 
-Minimal Bronze → Silver job for Databricks serverless.
-No Gold, no wheel packaging, no notebook conversion.
+Minimal Bronze → Silver → Gold job for Databricks serverless.
+No wheel packaging, no notebook conversion, no dashboard wiring.
 
 After cloning, point the Databricks CLI at **your** workspace with
 `--profile <your-profile>`. The bundle does not hardcode a host or
@@ -14,9 +14,9 @@ profile; the selected CLI profile supplies the workspace URL.
 - Unity Catalog catalog already exists (default variable: `workspace`)
 - Landing CSVs on a Volume path your job can read (default variable:
   `/Volumes/workspace/c1_landing/landing` — override if yours differs)
-- Schemas for Bronze / Silver (defaults `c1_bronze` / `c1_silver`) are
-  created by `database/schema.sql` on first Bronze run, or create them
-  beforehand
+- Schemas for Bronze / Silver / Gold (defaults `c1_bronze` / `c1_silver` /
+  `c1_gold`) are created by `database/schema.sql` on first pipeline run,
+  or create them beforehand
 
 ## Security
 
@@ -54,6 +54,7 @@ databricks bundle validate -t free --profile <YOUR_PROFILE> \
   --var="catalog=workspace" \
   --var="bronze_schema=c1_bronze" \
   --var="silver_schema=c1_silver" \
+  --var="gold_schema=c1_gold" \
   --var="landing_path=/Volumes/workspace/c1_landing/landing"
 ```
 
@@ -64,26 +65,27 @@ databricks bundle deploy -t free --profile <YOUR_PROFILE>
 ```
 
 Syncs `src/` and `database/` and creates/updates the
-`bronze-silver-pipeline` job.
+`ecommerce-medallion-pipeline` job.
 
 ## Run (you run this)
 
 ```bash
-databricks bundle run bronze_silver_pipeline -t free --profile <YOUR_PROFILE>
+databricks bundle run ecommerce_medallion_pipeline -t free --profile <YOUR_PROFILE>
 ```
 
 Optional job-parameter overrides:
 
 ```bash
-databricks bundle run bronze_silver_pipeline -t free --profile <YOUR_PROFILE> -- \
+databricks bundle run ecommerce_medallion_pipeline -t free --profile <YOUR_PROFILE> -- \
   --catalog=workspace \
   --bronze_schema=c1_bronze \
   --silver_schema=c1_silver \
+  --gold_schema=c1_gold \
   --landing_path=/Volumes/workspace/c1_landing/landing
 ```
 
-Job flow: `bronze_ingest` → (on success) → `silver_validate`.
-Both tasks use serverless (`environment_key: default`).
+Job flow: `bronze_ingest` → (on success) → `silver_validate` → (on success)
+→ `gold_aggregate`. All three tasks use serverless (`environment_key: default`).
 
 ## Configurable settings
 
@@ -92,11 +94,13 @@ Both tasks use serverless (`environment_key: default`).
 | `catalog`                | `workspace`                 |
 | `bronze_schema`          | `c1_bronze`                 |
 | `silver_schema`          | `c1_silver`                 |
+| `gold_schema`            | `c1_gold`                   |
 | `landing_path`           | `/Volumes/workspace/c1_landing/landing` |
 
-Defaults are passed as CLI flags to `src/bronze/ingest_all.py` and
-`src/silver/create_silver_tables.py`. Change them per clone with
-`--var` at validate/deploy time or by editing target `variables`.
+Defaults are passed as CLI flags to `src/bronze/ingest_all.py`,
+`src/silver/create_silver_tables.py`, and `src/gold/create_gold_tables.py`.
+Change them per clone with `--var` at validate/deploy time or by editing
+target `variables`.
 
 ## Imports on serverless
 
@@ -115,7 +119,7 @@ export DATABRICKS_TF_VERSION=1.5.5
 export DATABRICKS_TF_EXEC_PATH=/opt/homebrew/bin/terraform
 databricks bundle validate -t free --profile DE_C1_FREE
 databricks bundle deploy -t free --profile DE_C1_FREE
-databricks bundle run bronze_silver_pipeline -t free --profile DE_C1_FREE
+databricks bundle run ecommerce_medallion_pipeline -t free --profile DE_C1_FREE
 ```
 
 That profile’s config file is separate from `~/.databrickscfg`.
@@ -126,5 +130,6 @@ After a successful deploy + run on serverless, still pending:
 
 1. TS-02 Databricks markers in `tests/test_bronze_ingestion.py`
 2. TS-03 / TS-04 Databricks markers in `tests/test_silver_validation.py`
+3. TS-05 Databricks markers in `tests/test_gold_aggregations.py`
 
 Do not treat those as passed until they execute on Databricks.

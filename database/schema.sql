@@ -1,15 +1,16 @@
 -- Medallion setup for Databricks serverless (Unity Catalog).
--- Replace __CATALOG__, __BRONZE_SCHEMA__, and __SILVER_SCHEMA__ before
--- running this file in a SQL editor, or run src/bronze/ingest_all.py /
--- src/silver/create_silver_tables.py, which substitute those tokens and
+-- Replace __CATALOG__, __BRONZE_SCHEMA__, __SILVER_SCHEMA__, and
+-- __GOLD_SCHEMA__ before running this file in a SQL editor, or run
+-- src/bronze/ingest_all.py / src/silver/create_silver_tables.py /
+-- src/gold/create_gold_tables.py, which substitute those tokens and
 -- execute these statements.
 -- The catalog must already exist. This script does not create a catalog.
--- It creates the Bronze and Silver schemas and empty Delta tables.
+-- It creates the Bronze, Silver, and Gold schemas and empty Delta tables.
 -- Pipeline stages overwrite table data on each rerun.
--- Gold schema (e.g. c1_gold) is reserved for a later layer; no Gold DDL here.
+-- Bronze/Silver apply Gold DDL only when gold_schema is configured.
 --
 -- Free Edition example:
---   catalog=workspace, bronze=c1_bronze, silver=c1_silver
+--   catalog=workspace, bronze=c1_bronze, silver=c1_silver, gold=c1_gold
 --   landing=/Volumes/workspace/c1_landing/landing
 
 CREATE SCHEMA IF NOT EXISTS `__CATALOG__`.`__BRONZE_SCHEMA__`
@@ -17,6 +18,9 @@ COMMENT 'E-commerce medallion Bronze (raw ingest)';
 
 CREATE SCHEMA IF NOT EXISTS `__CATALOG__`.`__SILVER_SCHEMA__`
 COMMENT 'E-commerce medallion Silver (validated + DQ metrics)';
+
+CREATE SCHEMA IF NOT EXISTS `__CATALOG__`.`__GOLD_SCHEMA__`
+COMMENT 'E-commerce medallion Gold (PASS-only aggregations)';
 
 CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__BRONZE_SCHEMA__`.`bronze_customers` (
   customer_id INT NOT NULL,
@@ -132,3 +136,44 @@ CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SILVER_SCHEMA__`.`dq_metrics_report`
 )
 USING DELTA
 COMMENT 'Pass/fail counts and pass_pct per Silver validation category.';
+
+CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__GOLD_SCHEMA__`.`gold_sales_by_product` (
+  product_id INT NOT NULL,
+  product_name STRING NOT NULL,
+  category STRING NOT NULL,
+  total_orders BIGINT NOT NULL,
+  total_revenue DECIMAL(18, 2) NOT NULL,
+  avg_order_value DECIMAL(18, 2) NOT NULL
+)
+USING DELTA
+COMMENT 'PASS-only sales aggregated by product (GD-01).';
+
+CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__GOLD_SCHEMA__`.`gold_revenue_by_customer` (
+  customer_id INT NOT NULL,
+  customer_name STRING NOT NULL,
+  customer_segment STRING NOT NULL,
+  total_orders BIGINT NOT NULL,
+  total_revenue DECIMAL(18, 2) NOT NULL,
+  avg_order_value DECIMAL(18, 2) NOT NULL,
+  lifetime_value_actual DECIMAL(18, 2) NOT NULL
+)
+USING DELTA
+COMMENT 'PASS-only revenue aggregated by customer (GD-02).';
+
+CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__GOLD_SCHEMA__`.`gold_daily_weekly_trends` (
+  period_start DATE NOT NULL,
+  period_grain STRING NOT NULL,
+  total_orders BIGINT NOT NULL,
+  total_revenue DECIMAL(18, 2) NOT NULL
+)
+USING DELTA
+COMMENT 'PASS-only order trends at DAY and WEEK grains (GD-03).';
+
+CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__GOLD_SCHEMA__`.`gold_customer_segmentation` (
+  segment_type STRING NOT NULL,
+  customer_count BIGINT NOT NULL,
+  avg_revenue DECIMAL(18, 2) NOT NULL,
+  total_revenue DECIMAL(18, 2) NOT NULL
+)
+USING DELTA
+COMMENT 'PASS-only behavior segments High-Value / Repeat / One-Time / Inactive (GD-04).';
