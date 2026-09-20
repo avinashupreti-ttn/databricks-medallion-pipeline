@@ -234,17 +234,25 @@ def split_sql(text: str) -> list[str]:
     return statements
 
 
-def render_schema_statements(catalog: str, schema_name: str) -> list[str]:
+def render_schema_statements(
+    catalog: str, bronze_schema: str, silver_schema: str
+) -> list[str]:
     validate_identifier(catalog, "catalog")
-    validate_identifier(schema_name, "schema")
+    validate_identifier(bronze_schema, "bronze_schema")
+    validate_identifier(silver_schema, "silver_schema")
     if not SCHEMA_PATH.is_file():
         raise FileNotFoundError(f"Schema file not found: {SCHEMA_PATH}")
     rendered = (
         SCHEMA_PATH.read_text(encoding="utf-8")
         .replace("__CATALOG__", catalog)
-        .replace("__SCHEMA__", schema_name)
+        .replace("__BRONZE_SCHEMA__", bronze_schema)
+        .replace("__SILVER_SCHEMA__", silver_schema)
     )
-    if "__CATALOG__" in rendered or "__SCHEMA__" in rendered:
+    if (
+        "__CATALOG__" in rendered
+        or "__BRONZE_SCHEMA__" in rendered
+        or "__SILVER_SCHEMA__" in rendered
+    ):
         raise RuntimeError("database/schema.sql has unsubstituted placeholders.")
     statements = split_sql(rendered)
     if not statements:
@@ -252,15 +260,15 @@ def render_schema_statements(catalog: str, schema_name: str) -> list[str]:
     return statements
 
 
-def apply_schema(spark, catalog: str, schema_name: str) -> None:
-    statements = render_schema_statements(catalog, schema_name)
+def apply_schema(spark, catalog: str, bronze_schema: str, silver_schema: str) -> None:
+    statements = render_schema_statements(catalog, bronze_schema, silver_schema)
     for statement in statements:
         try:
             spark.sql(statement)
         except Exception as exc:
             raise RuntimeError(
                 "Failed to apply database/schema.sql for "
-                f"{catalog}.{schema_name}: {exc}"
+                f"{catalog}.{bronze_schema} / {catalog}.{silver_schema}: {exc}"
             ) from exc
 
 
@@ -316,7 +324,8 @@ def ingest_entity(
     spark,
     entity: str,
     catalog: str,
-    schema_name: str,
+    bronze_schema: str,
+    silver_schema: str,
     landing_path: str,
     batch_id: str,
     *,
@@ -325,13 +334,14 @@ def ingest_entity(
     if entity not in ENTITIES:
         raise ValueError(f"Unknown Bronze entity: {entity}")
     validate_identifier(catalog, "catalog")
-    validate_identifier(schema_name, "schema")
+    validate_identifier(bronze_schema, "bronze_schema")
+    validate_identifier(silver_schema, "silver_schema")
     batch_id = validate_batch_id(batch_id)
     spec = ENTITIES[entity]
     path = join_landing_path(landing_path, spec["filename"])
     if prepare:
         assert_source_ready(path, spec["fields"], spark)
-        apply_schema(spark, catalog, schema_name)
+        apply_schema(spark, catalog, bronze_schema, silver_schema)
     frame = read_landing_csv(spark, path, spec["fields"])
     row_count = frame.count()
     if row_count == 0:
@@ -346,10 +356,10 @@ def ingest_entity(
         .withColumn("_source_file", F.lit(path))
         .withColumn("_ingestion_batch_id", F.lit(batch_id))
     )
-    table = _qualified_table(catalog, schema_name, spec["table"])
+    table = _qualified_table(catalog, bronze_schema, spec["table"])
     try:
         spark.sql(f"USE CATALOG `{catalog}`")
-        spark.sql(f"USE SCHEMA `{schema_name}`")
+        spark.sql(f"USE SCHEMA `{bronze_schema}`")
         (
             stamped.write.format("delta")
             .mode("overwrite")
@@ -366,22 +376,31 @@ def ingest_entity(
     return int(row_count)
 
 
-def ingest_all(spark, catalog: str, schema_name: str, landing_path: str, batch_id: str) -> dict:
+def ingest_all(
+    spark,
+    catalog: str,
+    bronze_schema: str,
+    silver_schema: str,
+    landing_path: str,
+    batch_id: str,
+) -> dict:
     """Validate every source file before writing any Bronze table."""
     validate_identifier(catalog, "catalog")
-    validate_identifier(schema_name, "schema")
+    validate_identifier(bronze_schema, "bronze_schema")
+    validate_identifier(silver_schema, "silver_schema")
     batch_id = validate_batch_id(batch_id)
     for spec in ENTITIES.values():
         path = join_landing_path(landing_path, spec["filename"])
         assert_source_ready(path, spec["fields"], spark)
-    apply_schema(spark, catalog, schema_name)
+    apply_schema(spark, catalog, bronze_schema, silver_schema)
     counts = {}
     for entity in ENTITIES:
         counts[entity] = ingest_entity(
             spark,
             entity,
             catalog,
-            schema_name,
+            bronze_schema,
+            silver_schema,
             landing_path,
             batch_id,
             prepare=False,
@@ -417,12 +436,20 @@ def run_main(entity: str | None = None, argv: list[str] | None = None) -> int:
         )
     )
     parser.add_argument("--catalog", default=None)
-    parser.add_argument("--schema", default=None)
+    parser.add_argument("--bronze-schema", default=None)
+    parser.add_argument("--silver-schema", default=None)
+    parser.add_argument("--gold-schema", default=None)
     parser.add_argument("--landing-path", default=None)
     parser.add_argument("--batch-id", default=None)
     args = parser.parse_args(argv)
     try:
-        config = resolve_config(args.catalog, args.schema, args.landing_path)
+        config = resolve_config(
+            args.catalog,
+            args.bronze_schema,
+            args.silver_schema,
+            args.landing_path,
+            args.gold_schema,
+        )
         batch_id = (
             validate_batch_id(args.batch_id) if args.batch_id is not None else new_batch_id()
         )
@@ -431,7 +458,8 @@ def run_main(entity: str | None = None, argv: list[str] | None = None) -> int:
             ingest_all(
                 spark,
                 config.catalog,
-                config.schema,
+                config.bronze_schema,
+                config.silver_schema,
                 config.landing_path,
                 batch_id,
             )
@@ -440,7 +468,8 @@ def run_main(entity: str | None = None, argv: list[str] | None = None) -> int:
                 spark,
                 entity,
                 config.catalog,
-                config.schema,
+                config.bronze_schema,
+                config.silver_schema,
                 config.landing_path,
                 batch_id,
             )

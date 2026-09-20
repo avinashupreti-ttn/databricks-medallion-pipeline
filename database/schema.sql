@@ -1,15 +1,24 @@
 -- Medallion setup for Databricks serverless (Unity Catalog).
--- Replace __CATALOG__ and __SCHEMA__ before running this file in a SQL
--- editor, or run src/bronze/ingest_all.py / src/silver/create_silver_tables.py,
--- which substitute those tokens and execute these statements.
+-- Replace __CATALOG__, __BRONZE_SCHEMA__, and __SILVER_SCHEMA__ before
+-- running this file in a SQL editor, or run src/bronze/ingest_all.py /
+-- src/silver/create_silver_tables.py, which substitute those tokens and
+-- execute these statements.
 -- The catalog must already exist. This script does not create a catalog.
--- It creates the schema and empty Bronze / Silver Delta tables. Pipeline
--- stages overwrite table data on each rerun. Gold DDL is added with that layer.
+-- It creates the Bronze and Silver schemas and empty Delta tables.
+-- Pipeline stages overwrite table data on each rerun.
+-- Gold schema (e.g. c1_gold) is reserved for a later layer; no Gold DDL here.
+--
+-- Free Edition example:
+--   catalog=workspace, bronze=c1_bronze, silver=c1_silver
+--   landing=/Volumes/workspace/c1_landing/landing
 
-CREATE SCHEMA IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`
-COMMENT 'E-commerce medallion pipeline';
+CREATE SCHEMA IF NOT EXISTS `__CATALOG__`.`__BRONZE_SCHEMA__`
+COMMENT 'E-commerce medallion Bronze (raw ingest)';
 
-CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`bronze_customers` (
+CREATE SCHEMA IF NOT EXISTS `__CATALOG__`.`__SILVER_SCHEMA__`
+COMMENT 'E-commerce medallion Silver (validated + DQ metrics)';
+
+CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__BRONZE_SCHEMA__`.`bronze_customers` (
   customer_id INT NOT NULL,
   customer_name STRING NOT NULL,
   email STRING,
@@ -24,7 +33,7 @@ CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`bronze_customers` (
 USING DELTA
 COMMENT 'Raw customers plus ingestion metadata. No cleansing or deduplication.';
 
-CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`bronze_orders` (
+CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__BRONZE_SCHEMA__`.`bronze_orders` (
   order_id INT NOT NULL,
   customer_id INT,
   order_date DATE NOT NULL,
@@ -41,7 +50,7 @@ CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`bronze_orders` (
 USING DELTA
 COMMENT 'Raw orders plus ingestion metadata. No cleansing or deduplication.';
 
-CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`bronze_products` (
+CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__BRONZE_SCHEMA__`.`bronze_products` (
   product_id INT NOT NULL,
   product_name STRING NOT NULL,
   category STRING NOT NULL,
@@ -56,7 +65,7 @@ CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`bronze_products` (
 USING DELTA
 COMMENT 'Raw products plus ingestion metadata. No cleansing or deduplication.';
 
-CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`silver_customers` (
+CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SILVER_SCHEMA__`.`silver_customers` (
   customer_id INT NOT NULL,
   customer_name STRING NOT NULL,
   email STRING,
@@ -74,7 +83,7 @@ CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`silver_customers` (
 USING DELTA
 COMMENT 'Validated customers. All Bronze rows retained with quality flags.';
 
-CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`silver_orders` (
+CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SILVER_SCHEMA__`.`silver_orders` (
   order_id INT NOT NULL,
   customer_id INT,
   order_date DATE NOT NULL,
@@ -94,7 +103,7 @@ CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`silver_orders` (
 USING DELTA
 COMMENT 'Validated orders. All Bronze rows retained with quality flags.';
 
-CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`silver_products` (
+CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SILVER_SCHEMA__`.`silver_products` (
   product_id INT NOT NULL,
   product_name STRING NOT NULL,
   category STRING NOT NULL,
@@ -112,7 +121,7 @@ CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`silver_products` (
 USING DELTA
 COMMENT 'Validated products. All Bronze rows retained with quality flags.';
 
-CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`dq_metrics_report` (
+CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SILVER_SCHEMA__`.`dq_metrics_report` (
   check_category STRING NOT NULL,
   entity STRING NOT NULL,
   rows_evaluated BIGINT NOT NULL,

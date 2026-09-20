@@ -280,7 +280,7 @@ def test_missing_bronze_fails_before_schema_apply(monkeypatch):
         FileNotFoundError,
         match="Bronze tables required for Silver are missing",
     ):
-        silver_mod.create_silver_tables(Spark(), "main", "ecommerce")
+        silver_mod.create_silver_tables(Spark(), "workspace", "c1_bronze", "c1_silver")
     assert applied == []
 
     calls = []
@@ -295,13 +295,19 @@ def test_missing_bronze_fails_before_schema_apply(monkeypatch):
     monkeypatch.setattr(silver_mod, "_require_bronze", require)
     monkeypatch.setattr(silver_mod, "apply_schema", apply_then_stop)
     with pytest.raises(RuntimeError, match="stop-after-order-check"):
-        silver_mod.create_silver_tables(object(), "main", "ecommerce")
+        silver_mod.create_silver_tables(object(), "workspace", "c1_bronze", "c1_silver")
     assert calls == ["require_bronze", "apply_schema"]
 
 
 def test_script_fails_fast_without_config():
     env = os.environ.copy()
-    for name in ("PIPELINE_CATALOG", "PIPELINE_SCHEMA", "PIPELINE_LANDING_PATH"):
+    for name in (
+        "PIPELINE_CATALOG",
+        "PIPELINE_BRONZE_SCHEMA",
+        "PIPELINE_SILVER_SCHEMA",
+        "PIPELINE_GOLD_SCHEMA",
+        "PIPELINE_LANDING_PATH",
+    ):
         env.pop(name, None)
     completed = subprocess.run(
         [sys.executable, str(SILVER_DIR / "create_silver_tables.py")],
@@ -312,7 +318,10 @@ def test_script_fails_fast_without_config():
         text=True,
     )
     assert completed.returncode == 1
-    assert "Missing required configuration: catalog, schema, landing_path" in completed.stderr
+    assert (
+        "Missing required configuration: catalog, bronze_schema, "
+        "silver_schema, landing_path"
+    ) in completed.stderr
 
 
 def test_script_reports_missing_pyspark(tmp_path):
@@ -328,9 +337,11 @@ def test_script_reports_missing_pyspark(tmp_path):
             sys.executable,
             str(SILVER_DIR / "create_silver_tables.py"),
             "--catalog",
-            "main",
-            "--schema",
-            "ecommerce",
+            "workspace",
+            "--bronze-schema",
+            "c1_bronze",
+            "--silver-schema",
+            "c1_silver",
             "--landing-path",
             str(tmp_path),
         ],
@@ -349,18 +360,22 @@ def test_run_main_rejects_invalid_catalog(capsys):
         [
             "--catalog",
             "main;drop",
-            "--schema",
-            "ecommerce",
+            "--bronze-schema",
+            "c1_bronze",
+            "--silver-schema",
+            "c1_silver",
             "--landing-path",
-            "/Volumes/main/ecommerce/landing",
+            "/Volumes/workspace/c1_landing/landing",
         ]
     )
     assert code == 1
     assert "Invalid catalog" in capsys.readouterr().err
 
 
-def _table_columns(sql: str, table: str):
-    marker = f"CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`{table}` ("
+def _table_columns(sql: str, table: str, schema_token: str = "__SILVER_SCHEMA__"):
+    marker = (
+        f"CREATE TABLE IF NOT EXISTS `__CATALOG__`.`{schema_token}`.`{table}` ("
+    )
     start = sql.find(marker)
     assert start != -1, table
     body_start = start + len(marker)
@@ -437,9 +452,12 @@ def test_schema_sql_matches_silver_contract():
         ("pass_pct", "DOUBLE", False),
         ("reported_at", "TIMESTAMP", False),
     ]
-    statements = render_schema_statements("main", "ecommerce")
+    statements = render_schema_statements("workspace", "c1_bronze", "c1_silver")
     rendered = "\n".join(statements)
-    assert len(statements) == 8
+    assert len(statements) == 9
+    assert "`workspace`.`c1_silver`.`silver_customers`" in rendered
+    assert "`workspace`.`c1_silver`.`dq_metrics_report`" in rendered
+    assert "`workspace`.`c1_bronze`.`bronze_customers`" in rendered
     assert SILVER_TABLES["customers"] in rendered
     assert DQ_METRICS_TABLE in rendered
     assert tuple(BUSINESS_COLUMNS["customers"]) == tuple(
@@ -523,8 +541,12 @@ def _skip_unless_databricks(request):
     return spark, config
 
 
-def _table(config, table: str) -> str:
-    return f"`{config.catalog}`.`{config.schema}`.`{table}`"
+def _bronze_table(config, table: str) -> str:
+    return f"`{config.catalog}`.`{config.bronze_schema}`.`{table}`"
+
+
+def _silver_table(config, table: str) -> str:
+    return f"`{config.catalog}`.`{config.silver_schema}`.`{table}`"
 
 
 def _count_where(spark, table: str, predicate: str = "1 = 1") -> int:
@@ -541,8 +563,8 @@ def test_silver_row_counts_match_bronze(request):
         ("bronze_products", "silver_products", PRODUCT_ROWS),
     )
     for bronze_name, silver_name, target in pairs:
-        bronze = _count_where(spark, _table(config, bronze_name))
-        silver = _count_where(spark, _table(config, silver_name))
+        bronze = _count_where(spark, _bronze_table(config, bronze_name))
+        silver = _count_where(spark, _silver_table(config, silver_name))
         assert bronze == target
         assert silver == bronze
 
@@ -550,9 +572,9 @@ def test_silver_row_counts_match_bronze(request):
 @pytest.mark.databricks
 def test_silver_detects_intentional_defects(request):
     spark, config = _skip_unless_databricks(request)
-    customers = _table(config, "silver_customers")
-    orders = _table(config, "silver_orders")
-    products = _table(config, "silver_products")
+    customers = _silver_table(config, "silver_customers")
+    orders = _silver_table(config, "silver_orders")
+    products = _silver_table(config, "silver_products")
 
     assert _count_where(
         spark, customers, "array_contains(failed_checks, 'completeness')"
@@ -590,9 +612,9 @@ def test_silver_detects_intentional_defects(request):
 @pytest.mark.databricks
 def test_silver_known_good_rows_pass(request):
     spark, config = _skip_unless_databricks(request)
-    customers = _table(config, "silver_customers")
-    orders = _table(config, "silver_orders")
-    products = _table(config, "silver_products")
+    customers = _silver_table(config, "silver_customers")
+    orders = _silver_table(config, "silver_orders")
+    products = _silver_table(config, "silver_products")
     assert _count_where(spark, customers, "quality_check_result = 'PASS'") == (
         CUSTOMER_ROWS - CUSTOMER_FAIL_ROWS
     )
@@ -606,10 +628,12 @@ def test_silver_known_good_rows_pass(request):
 @pytest.mark.databricks
 def test_dq_metrics_report_matches_strategy(request):
     spark, config = _skip_unless_databricks(request)
-    table = _table(config, DQ_METRICS_TABLE)
+    table = _silver_table(config, DQ_METRICS_TABLE)
     rows = {
         (row["check_category"], row["entity"]): row
-        for row in spark.table(f"{config.catalog}.{config.schema}.{DQ_METRICS_TABLE}").collect()
+        for row in spark.table(
+            f"{config.catalog}.{config.silver_schema}.{DQ_METRICS_TABLE}"
+        ).collect()
     }
     expected = {
         ("completeness", "customers"): (CUSTOMER_ROWS, NULL_EMAILS),

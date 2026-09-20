@@ -1,0 +1,47 @@
+# Minimal Databricks Asset Bundle for Bronze → Silver on serverless.
+# Workspace host is resolved from the Databricks CLI profile passed with
+# --profile (or the active profile). Do not commit credentials.
+
+bundle:
+  name: databricks-medallion-pipeline
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog name
+    default: workspace
+  bronze_schema:
+    description: Schema for Bronze Delta tables
+    default: c1_bronze
+  silver_schema:
+    description: Schema for Silver Delta tables and dq_metrics_report
+    default: c1_silver
+  landing_path:
+    description: Volume directory containing customers.csv, orders.csv, products.csv
+    default: /Volumes/workspace/c1_landing/landing
+
+sync:
+  include:
+    - src/**
+    - database/**
+  exclude:
+    - tests/**
+    - data/**
+    - ai-prompts/**
+    - tool-specific/**
+    - .venv/**
+    - tests/reports/**
+
+targets:
+  free:
+    default: true
+    mode: development
+    # No workspace.host or workspace.profile here — the CLI --profile
+    # selects the Databricks config profile and resolves the host.
+    variables:
+      catalog: workspace
+      bronze_schema: c1_bronze
+      silver_schema: c1_silver
+      landing_path: /Volumes/workspace/c1_landing/landing

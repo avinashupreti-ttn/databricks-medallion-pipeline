@@ -97,33 +97,54 @@ def _customer_csv(path: Path, body: str) -> None:
 
 
 def test_missing_config_names_every_setting(monkeypatch):
-    for name in ("PIPELINE_CATALOG", "PIPELINE_SCHEMA", "PIPELINE_LANDING_PATH"):
+    for name in (
+        "PIPELINE_CATALOG",
+        "PIPELINE_BRONZE_SCHEMA",
+        "PIPELINE_SILVER_SCHEMA",
+        "PIPELINE_GOLD_SCHEMA",
+        "PIPELINE_LANDING_PATH",
+    ):
         monkeypatch.delenv(name, raising=False)
-    with pytest.raises(ValueError, match="Missing required configuration: catalog, schema, landing_path"):
+    with pytest.raises(
+        ValueError,
+        match=(
+            "Missing required configuration: catalog, bronze_schema, "
+            "silver_schema, landing_path"
+        ),
+    ):
         resolve_config()
 
 
 def test_env_fills_settings_and_args_win(monkeypatch):
     monkeypatch.setenv("PIPELINE_CATALOG", "from_env")
-    monkeypatch.setenv("PIPELINE_SCHEMA", "ecommerce")
-    monkeypatch.setenv("PIPELINE_LANDING_PATH", "/Volumes/main/ecommerce/landing")
+    monkeypatch.setenv("PIPELINE_BRONZE_SCHEMA", "c1_bronze")
+    monkeypatch.setenv("PIPELINE_SILVER_SCHEMA", "c1_silver")
+    monkeypatch.setenv("PIPELINE_LANDING_PATH", "/Volumes/workspace/c1_landing/landing")
     config = resolve_config()
     assert config.catalog == "from_env"
-    overridden = resolve_config("main", None, None)
-    assert overridden.catalog == "main"
-    assert overridden.schema == "ecommerce"
-    assert overridden.landing_path == "/Volumes/main/ecommerce/landing"
+    assert config.bronze_schema == "c1_bronze"
+    assert config.silver_schema == "c1_silver"
+    overridden = resolve_config("workspace", None, None, None)
+    assert overridden.catalog == "workspace"
+    assert overridden.bronze_schema == "c1_bronze"
+    assert overridden.silver_schema == "c1_silver"
+    assert overridden.landing_path == "/Volumes/workspace/c1_landing/landing"
 
 
 def test_invalid_catalog_rejected():
     with pytest.raises(ValueError, match="Invalid catalog"):
-        resolve_config("main;drop", "ecommerce", "/Volumes/main/ecommerce/landing")
+        resolve_config(
+            "main;drop",
+            "c1_bronze",
+            "c1_silver",
+            "/Volumes/workspace/c1_landing/landing",
+        )
 
 
 def test_join_landing_path_keeps_volume_and_dbfs_forms():
     assert (
-        join_landing_path("/Volumes/main/ecommerce/landing/", "customers.csv")
-        == "/Volumes/main/ecommerce/landing/customers.csv"
+        join_landing_path("/Volumes/workspace/c1_landing/landing/", "customers.csv")
+        == "/Volumes/workspace/c1_landing/landing/customers.csv"
     )
     assert join_landing_path("dbfs:/landing", "orders.csv") == "dbfs:/landing/orders.csv"
     with pytest.raises(ValueError, match="Invalid landing path"):
@@ -133,7 +154,7 @@ def test_join_landing_path_keeps_volume_and_dbfs_forms():
 def test_remote_path_detection():
     assert is_remote_path("dbfs:/landing/customers.csv")
     assert is_remote_path("s3://bucket/orders.csv")
-    assert not is_remote_path("/Volumes/main/ecommerce/landing/products.csv")
+    assert not is_remote_path("/Volumes/workspace/c1_landing/landing/products.csv")
 
 
 def test_local_csv_ready_accepts_one_data_row(tmp_path):
@@ -190,11 +211,13 @@ def test_unsafe_batch_id_fails_before_spark(capsys):
         "customers",
         [
             "--catalog",
-            "main",
-            "--schema",
-            "ecommerce",
+            "workspace",
+            "--bronze-schema",
+            "c1_bronze",
+            "--silver-schema",
+            "c1_silver",
             "--landing-path",
-            "/Volumes/main/ecommerce/landing",
+            "/Volumes/workspace/c1_landing/landing",
             "--batch-id",
             "bad;id",
         ],
@@ -214,7 +237,13 @@ def test_unsafe_batch_id_fails_before_spark(capsys):
 )
 def test_scripts_fail_fast_without_config(script_name):
     env = os.environ.copy()
-    for name in ("PIPELINE_CATALOG", "PIPELINE_SCHEMA", "PIPELINE_LANDING_PATH"):
+    for name in (
+        "PIPELINE_CATALOG",
+        "PIPELINE_BRONZE_SCHEMA",
+        "PIPELINE_SILVER_SCHEMA",
+        "PIPELINE_GOLD_SCHEMA",
+        "PIPELINE_LANDING_PATH",
+    ):
         env.pop(name, None)
     completed = subprocess.run(
         [sys.executable, str(BRONZE_DIR / script_name)],
@@ -225,7 +254,10 @@ def test_scripts_fail_fast_without_config(script_name):
         text=True,
     )
     assert completed.returncode == 1
-    assert "Missing required configuration: catalog, schema, landing_path" in completed.stderr
+    assert (
+        "Missing required configuration: catalog, bronze_schema, "
+        "silver_schema, landing_path"
+    ) in completed.stderr
 
 
 def test_script_reports_missing_pyspark(tmp_path):
@@ -241,9 +273,11 @@ def test_script_reports_missing_pyspark(tmp_path):
             sys.executable,
             str(BRONZE_DIR / "ingest_all.py"),
             "--catalog",
-            "main",
-            "--schema",
-            "ecommerce",
+            "workspace",
+            "--bronze-schema",
+            "c1_bronze",
+            "--silver-schema",
+            "c1_silver",
             "--landing-path",
             str(tmp_path),
         ],
@@ -314,8 +348,10 @@ def test_explicit_databricks_request_does_not_skip():
     assert "skipped" not in output
 
 
-def _table_columns(sql: str, table: str):
-    marker = f"CREATE TABLE IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`.`{table}` ("
+def _table_columns(sql: str, table: str, schema_token: str):
+    marker = (
+        f"CREATE TABLE IF NOT EXISTS `__CATALOG__`.`{schema_token}`.`{table}` ("
+    )
     start = sql.find(marker)
     assert start != -1, table
     body_start = start + len(marker)
@@ -336,7 +372,8 @@ def _table_columns(sql: str, table: str):
 def test_schema_sql_matches_bronze_contract():
     sql = SCHEMA_PATH.read_text(encoding="utf-8")
     assert "CREATE CATALOG" not in sql
-    assert "CREATE SCHEMA IF NOT EXISTS `__CATALOG__`.`__SCHEMA__`" in sql
+    assert "CREATE SCHEMA IF NOT EXISTS `__CATALOG__`.`__BRONZE_SCHEMA__`" in sql
+    assert "CREATE SCHEMA IF NOT EXISTS `__CATALOG__`.`__SILVER_SCHEMA__`" in sql
     assert CUSTOMER_FIELDS == CONTRACT_CUSTOMERS
     assert ORDER_FIELDS == CONTRACT_ORDERS
     assert PRODUCT_FIELDS == CONTRACT_PRODUCTS
@@ -347,25 +384,27 @@ def test_schema_sql_matches_bronze_contract():
         "bronze_products": CONTRACT_PRODUCTS + CONTRACT_METADATA,
     }
     for table, fields in expected.items():
-        parsed = _table_columns(sql, table)
+        parsed = _table_columns(sql, table, "__BRONZE_SCHEMA__")
         contract = [
             (name, SQL_TYPE[kind], nullable) for name, kind, nullable in fields
         ]
         assert parsed == contract
-    statements = render_schema_statements("main", "ecommerce")
+    statements = render_schema_statements("workspace", "c1_bronze", "c1_silver")
     rendered = "\n".join(statements)
-    assert len(statements) == 8
+    assert len(statements) == 9
     assert "__CATALOG__" not in rendered
-    assert "`main`.`ecommerce`.`bronze_customers`" in rendered
-    assert "`main`.`ecommerce`.`bronze_orders`" in rendered
-    assert "`main`.`ecommerce`.`bronze_products`" in rendered
-    assert "`main`.`ecommerce`.`silver_customers`" in rendered
-    assert "`main`.`ecommerce`.`silver_orders`" in rendered
-    assert "`main`.`ecommerce`.`silver_products`" in rendered
-    assert "`main`.`ecommerce`.`dq_metrics_report`" in rendered
+    assert "__BRONZE_SCHEMA__" not in rendered
+    assert "__SILVER_SCHEMA__" not in rendered
+    assert "`workspace`.`c1_bronze`.`bronze_customers`" in rendered
+    assert "`workspace`.`c1_bronze`.`bronze_orders`" in rendered
+    assert "`workspace`.`c1_bronze`.`bronze_products`" in rendered
+    assert "`workspace`.`c1_silver`.`silver_customers`" in rendered
+    assert "`workspace`.`c1_silver`.`silver_orders`" in rendered
+    assert "`workspace`.`c1_silver`.`silver_products`" in rendered
+    assert "`workspace`.`c1_silver`.`dq_metrics_report`" in rendered
     assert rendered.count("USING DELTA") == 7
     with pytest.raises(ValueError, match="Invalid catalog"):
-        render_schema_statements("bad name", "ecommerce")
+        render_schema_statements("bad name", "c1_bronze", "c1_silver")
 
 
 def _databricks_marker_requested(request) -> bool:
@@ -411,7 +450,7 @@ def _skip_unless_databricks(request):
 
 
 def _table(config, table: str) -> str:
-    return f"`{config.catalog}`.`{config.schema}`.`{table}`"
+    return f"`{config.catalog}`.`{config.bronze_schema}`.`{table}`"
 
 
 def _count_where(spark, table: str, predicate: str = "1 = 1") -> int:
