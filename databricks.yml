@@ -24,6 +24,13 @@ variables:
   landing_path:
     description: Volume directory containing customers.csv, orders.csv, products.csv
     default: /Volumes/workspace/c1_landing/landing
+  warehouse_id:
+    description: >
+      SQL warehouse for the AI/BI dashboard. Default resolves by warehouse
+      name on the target workspace. Override with --var="warehouse_id=<id>"
+      if your warehouse name differs. Do not commit tokens or host URLs.
+    lookup:
+      warehouse: Serverless Starter Warehouse
 
 sync:
   include:
@@ -36,6 +43,8 @@ sync:
     - tool-specific/**
     - .venv/**
     - tests/reports/**
+    # Dashboard JSON is deployed as a dashboard resource, not synced as a file.
+    - src/dashboard/*.lvdash.json
 
 targets:
   free:

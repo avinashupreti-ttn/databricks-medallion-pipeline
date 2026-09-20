@@ -1,0 +1,419 @@
+{
+  "datasets": [
+    {
+      "name": "ds01prod",
+      "displayName": "top_10_products_by_revenue",
+      "query": "SELECT\n  product_id,\n  product_name,\n  category,\n  total_orders,\n  total_revenue,\n  avg_order_value\nFROM `workspace`.`c1_gold`.`gold_sales_by_product`\nWHERE (size(:category_filter) = 0 OR array_contains(:category_filter, category))\nORDER BY total_revenue DESC\nLIMIT 10",
+      "parameters": [
+        {
+          "keyword": "category_filter",
+          "displayName": "Category",
+          "dataType": "STRING",
+          "complexType": "MULTI",
+          "defaultSelection": {
+            "values": {
+              "dataType": "STRING",
+              "values": []
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "ds01cats",
+      "displayName": "product_categories",
+      "query": "SELECT DISTINCT\n  category\nFROM `workspace`.`c1_gold`.`gold_sales_by_product`\nORDER BY category"
+    },
+    {
+      "name": "ds02revd",
+      "displayName": "customer_revenue_distribution",
+      "query": "SELECT\n  CASE\n    WHEN total_revenue < 100 THEN '$0–$99'\n    WHEN total_revenue < 250 THEN '$100–$249'\n    WHEN total_revenue < 500 THEN '$250–$499'\n    WHEN total_revenue < 1000 THEN '$500–$999'\n    WHEN total_revenue < 2500 THEN '$1,000–$2,499'\n    WHEN total_revenue < 5000 THEN '$2,500–$4,999'\n    ELSE '$5,000+'\n  END AS revenue_bucket,\n  CASE\n    WHEN total_revenue < 100 THEN 0\n    WHEN total_revenue < 250 THEN 1\n    WHEN total_revenue < 500 THEN 2\n    WHEN total_revenue < 1000 THEN 3\n    WHEN total_revenue < 2500 THEN 4\n    WHEN total_revenue < 5000 THEN 5\n    ELSE 6\n  END AS bucket_sort,\n  COUNT(*) AS customer_count,\n  CAST(SUM(total_revenue) AS DECIMAL(18, 2)) AS bucket_total_revenue\nFROM `workspace`.`c1_gold`.`gold_revenue_by_customer`\nGROUP BY 1, 2\nORDER BY bucket_sort"
+    },
+    {
+      "name": "ds03segm",
+      "displayName": "customer_segmentation",
+      "query": "SELECT\n  segment_type,\n  customer_count,\n  avg_revenue,\n  total_revenue\nFROM `workspace`.`c1_gold`.`gold_customer_segmentation`\nORDER BY\n  CASE segment_type\n    WHEN 'High-Value' THEN 1\n    WHEN 'Repeat' THEN 2\n    WHEN 'One-Time' THEN 3\n    WHEN 'Inactive' THEN 4\n    ELSE 5\n  END"
+    },
+    {
+      "name": "ds04dayt",
+      "displayName": "daily_revenue_trend",
+      "query": "SELECT\n  period_start,\n  period_grain,\n  total_orders,\n  total_revenue\nFROM `workspace`.`c1_gold`.`gold_daily_weekly_trends`\nWHERE period_grain = 'DAY'\nORDER BY period_start"
+    }
+  ],
+  "pages": [
+    {
+      "name": "page01gd",
+      "displayName": "Gold overview",
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layout": [
+        {
+          "widget": {
+            "name": "txt01hdr",
+            "textbox_spec": "# E-commerce Gold dashboard\n\nGold-only tiles from `workspace.c1_gold`. Filters sit above their charts (two-column layout)."
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 6,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "flt01cat",
+            "queries": [
+              {
+                "name": "q_cat_options",
+                "query": {
+                  "datasetName": "ds01cats",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "category",
+                      "expression": "`category`"
+                    }
+                  ]
+                }
+              },
+              {
+                "name": "q_cat_param",
+                "query": {
+                  "datasetName": "ds01prod",
+                  "disaggregated": false,
+                  "parameters": [
+                    {
+                      "name": "category_filter",
+                      "keyword": "category_filter"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-multi-select",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "category",
+                    "displayName": "Category",
+                    "queryName": "q_cat_options"
+                  },
+                  {
+                    "parameterName": "category_filter",
+                    "queryName": "q_cat_param"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Top products: category"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 1,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "wgt01bar",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds01prod",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "product_name",
+                      "expression": "`product_name`"
+                    },
+                    {
+                      "name": "total_revenue",
+                      "expression": "`total_revenue`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "total_revenue",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Total revenue"
+                },
+                "y": {
+                  "fieldName": "product_name",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "value"
+                    }
+                  },
+                  "displayName": "Product"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Top 10 products by revenue"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 2,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "wgt02hst",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds02revd",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "revenue_bucket",
+                      "expression": "`revenue_bucket`"
+                    },
+                    {
+                      "name": "customer_count",
+                      "expression": "`customer_count`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "revenue_bucket",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "$0–$99",
+                        "$100–$249",
+                        "$250–$499",
+                        "$500–$999",
+                        "$1,000–$2,499",
+                        "$2,500–$4,999",
+                        "$5,000+"
+                      ]
+                    }
+                  },
+                  "displayName": "Revenue bucket"
+                },
+                "y": {
+                  "fieldName": "customer_count",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Customers"
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Customer revenue distribution"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 1,
+            "width": 3,
+            "height": 6
+          }
+        },
+        {
+          "widget": {
+            "name": "wgt03pie",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds03segm",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "segment_type",
+                      "expression": "`segment_type`"
+                    },
+                    {
+                      "name": "customer_count",
+                      "expression": "`customer_count`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "pie",
+              "encodings": {
+                "angle": {
+                  "fieldName": "customer_count",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Customers"
+                },
+                "color": {
+                  "fieldName": "segment_type",
+                  "scale": {
+                    "type": "categorical",
+                    "sort": {
+                      "by": "custom-order",
+                      "orderedValues": [
+                        "High-Value",
+                        "Repeat",
+                        "One-Time",
+                        "Inactive"
+                      ]
+                    }
+                  },
+                  "displayName": "Segment",
+                  "legend": {
+                    "hide": false
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Customer segmentation"
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 7,
+            "width": 3,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "flt02date",
+            "queries": [
+              {
+                "name": "q_period_start",
+                "query": {
+                  "datasetName": "ds04dayt",
+                  "disaggregated": false,
+                  "fields": [
+                    {
+                      "name": "period_start",
+                      "expression": "`period_start`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "widgetType": "filter-date-range-picker",
+              "encodings": {
+                "fields": [
+                  {
+                    "fieldName": "period_start",
+                    "displayName": "Day",
+                    "queryName": "q_period_start"
+                  }
+                ]
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Daily trend: date range"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 7,
+            "width": 3,
+            "height": 1
+          }
+        },
+        {
+          "widget": {
+            "name": "wgt04lin",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "ds04dayt",
+                  "disaggregated": true,
+                  "fields": [
+                    {
+                      "name": "period_start",
+                      "expression": "`period_start`"
+                    },
+                    {
+                      "name": "total_revenue",
+                      "expression": "`total_revenue`"
+                    }
+                  ]
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "widgetType": "line",
+              "encodings": {
+                "x": {
+                  "fieldName": "period_start",
+                  "scale": {
+                    "type": "temporal"
+                  },
+                  "displayName": "Day"
+                },
+                "y": {
+                  "fieldName": "total_revenue",
+                  "scale": {
+                    "type": "quantitative"
+                  },
+                  "displayName": "Total revenue"
+                }
+              },
+              "frame": {
+                "showTitle": true,
+                "title": "Daily revenue trend"
+              }
+            }
+          },
+          "position": {
+            "x": 3,
+            "y": 8,
+            "width": 3,
+            "height": 4
+          }
+        }
+      ]
+    }
+  ]
+}

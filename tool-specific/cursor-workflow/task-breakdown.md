@@ -144,19 +144,22 @@ T0 Setup ──► T1 Data gen ──► T2 Bronze ──► T3 Silver ──►
 **Files**
 - `src/dashboard/dashboard_queries.sql`
 - `src/dashboard/DASHBOARD_GUIDE.md`
+- `src/dashboard/ecommerce_gold_dashboard.lvdash.json`
+- `resources/ecommerce_gold_dashboard.yml`
 
 **Implement**
-- [ ] Gold-only SQL for required visualizations
-- [ ] Create **Databricks SQL Dashboard** with 3+ tiles (bar / histogram / pie)
-- [ ] Document recreate steps and filters in the guide
+- [x] Gold-only SQL for required visualizations
+- [x] Bundle-deployable AI/BI dashboard definition (`.lvdash.json` + resource YAML)
+- [ ] Deploy / open dashboard in workspace with 3+ tiles — **PENDING** (`bundle deploy` by you)
+- [x] Document recreate and bundle deploy steps in the guide
 
 **Validate / review**
-- [ ] Write tests: N/A beyond query smoke (manual/SQL warehouse)
-- [ ] Execute: run queries against Gold; open dashboard and confirm 3+ visualizations render
-- [ ] Review: tiles match DB-01–DB-06; guide is usable
+- [x] Write tests: N/A beyond query smoke / `bundle validate` — checklist in `DASHBOARD_GUIDE.md`
+- [ ] Execute: deploy dashboard; confirm 4 visualizations render — **PENDING**
+- [ ] Review: tiles match DB-01–DB-06; guide is usable — **PENDING** (visuals / publish)
 
 **Acceptance**
-- [ ] Dashboard exists with 3+ visualizations; queries + guide in repo
+- [ ] Dashboard exists with 3+ visualizations (**PENDING** deploy/UI); queries + guide + bundle definition in repo (**done**)
 
 ---
 
@@ -194,5 +197,5 @@ T0 Setup ──► T1 Data gen ──► T2 Bronze ──► T3 Silver ──►
 | T2 Bronze | [x] | [x] | [ ] | [ ] |
 | T3 Silver | [x] | [x] | [ ] | [ ] |
 | T4 Gold | [x] | [x] | [ ] | [ ] |
-| T5 Dashboard | [ ] | [ ] | [ ] | [ ] |
+| T5 Dashboard | [ ] | [x] | [ ] | [ ] |
 | T6 Final | [ ] | [ ] | [ ] | [ ] |

@@ -1,7 +1,10 @@
 # Databricks Asset Bundle — deployment guide
 
-Minimal Bronze → Silver → Gold job for Databricks serverless.
-No wheel packaging, no notebook conversion, no dashboard wiring.
+Minimal Bronze → Silver → Gold job for Databricks serverless, plus an
+optional Gold-only AI/BI dashboard resource. No wheel packaging or
+notebook conversion.
+
+Dashboard details: `src/dashboard/DASHBOARD_GUIDE.md`.
 
 After cloning, point the Databricks CLI at **your** workspace with
 `--profile <your-profile>`. The bundle does not hardcode a host or
@@ -96,6 +99,7 @@ Job flow: `bronze_ingest` → (on success) → `silver_validate` → (on success
 | `silver_schema`          | `c1_silver`                 |
 | `gold_schema`            | `c1_gold`                   |
 | `landing_path`           | `/Volumes/workspace/c1_landing/landing` |
+| `warehouse_id`           | Lookup: `Serverless Starter Warehouse` (override with `--var`) |
 
 Defaults are passed as CLI flags to `src/bronze/ingest_all.py`,
 `src/silver/create_silver_tables.py`, and `src/gold/create_gold_tables.py`.

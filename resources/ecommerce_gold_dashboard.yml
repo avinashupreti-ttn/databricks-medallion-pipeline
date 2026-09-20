@@ -1,0 +1,10 @@
+# AI/BI (Lakeview) dashboard — Gold-only visualizations.
+# Deployed by the Asset Bundle; warehouse is configurable via var.warehouse_id.
+# Bronze → Silver → Gold job resource is unchanged.
+
+resources:
+  dashboards:
+    ecommerce_gold_dashboard:
+      display_name: ecommerce-gold-dashboard
+      file_path: ../src/dashboard/ecommerce_gold_dashboard.lvdash.json
+      warehouse_id: ${var.warehouse_id}
