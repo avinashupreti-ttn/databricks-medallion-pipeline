@@ -79,8 +79,6 @@ databricks-medallion-pipeline/
 └── tool-specific/cursor-workflow/   # Cursor context and task plan
 ```
 
-`data/*.csv` exists in the working copy used to develop this project, but the current `.gitignore` excludes those files. **A fresh clone must run the generator** unless the CSVs are added to Git or distributed separately.
-
 ## Deploy and run
 
 
