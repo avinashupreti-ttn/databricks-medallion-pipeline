@@ -1,0 +1,66 @@
+# Minimal Databricks Asset Bundle for Bronze → Silver → Gold on serverless.
+# Workspace host is resolved from the Databricks CLI profile passed with
+# --profile (or the active profile). Do not commit credentials.
+
+bundle:
+  name: databricks-medallion-pipeline
+
+include:
+  - resources/*.yml
+
+variables:
+  catalog:
+    description: Unity Catalog name
+    default: workspace
+  bronze_schema:
+    description: Schema for Bronze Delta tables
+    default: c1_bronze
+  silver_schema:
+    description: Schema for Silver Delta tables and dq_metrics_report
+    default: c1_silver
+  gold_schema:
+    description: Schema for Gold aggregation Delta tables
+    default: c1_gold
+  landing_path:
+    description: Volume directory containing customers.csv, orders.csv, products.csv
+    default: /Volumes/workspace/c1_landing/landing
+  warehouse_id:
+    description: >
+      SQL warehouse for the AI/BI dashboard. Default resolves by warehouse
+      name on the target workspace. Override with --var="warehouse_id=<id>"
+      if your warehouse name differs. Do not commit tokens or host URLs.
+    lookup:
+      warehouse: Serverless Starter Warehouse
+
+sync:
+  include:
+    - src/**
+    - database/**
+    # Sole tests/ artifact synced: serverless TS-02–TS-05 validation notebook.
+    - tests/databricks/ts_02_05_serverless_validation.py
+  exclude:
+    # Keep pytest modules, execution summaries, HTML reports, screenshots, and
+    # any other tests/ scripts local. gitignore-style negation re-allows only
+    # the validation notebook (and its parent dir) after tests/**.
+    - tests/**
+    - "!tests/databricks/"
+    - "!tests/databricks/ts_02_05_serverless_validation.py"
+    - data/**
+    - ai-prompts/**
+    - tool-specific/**
+    - .venv/**
+    # Dashboard JSON is deployed as a dashboard resource, not synced as a file.
+    - src/dashboard/*.lvdash.json
+
+targets:
+  free:
+    default: true
+    mode: development
+    # No workspace.host or workspace.profile here — the CLI --profile
+    # selects the Databricks config profile and resolves the host.
+    variables:
+      catalog: workspace
+      bronze_schema: c1_bronze
+      silver_schema: c1_silver
+      gold_schema: c1_gold
+      landing_path: /Volumes/workspace/c1_landing/landing

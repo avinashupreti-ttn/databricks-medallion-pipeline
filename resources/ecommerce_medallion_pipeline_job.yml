@@ -1,0 +1,60 @@
+# Three-task serverless job: Bronze → Silver → Gold.
+# Silver runs only after Bronze succeeds. Gold runs only after Silver succeeds.
+# Reuses existing Python entry points.
+
+resources:
+  jobs:
+    ecommerce_medallion_pipeline:
+      name: ecommerce-medallion-pipeline
+      max_concurrent_runs: 1
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: bronze_schema
+          default: ${var.bronze_schema}
+        - name: silver_schema
+          default: ${var.silver_schema}
+        - name: gold_schema
+          default: ${var.gold_schema}
+        - name: landing_path
+          default: ${var.landing_path}
+      tasks:
+        - task_key: bronze_ingest
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/bronze/ingest_all.py
+            parameters:
+              - "--catalog={{job.parameters.catalog}}"
+              - "--bronze-schema={{job.parameters.bronze_schema}}"
+              - "--silver-schema={{job.parameters.silver_schema}}"
+              - "--gold-schema={{job.parameters.gold_schema}}"
+              - "--landing-path={{job.parameters.landing_path}}"
+        - task_key: silver_validate
+          depends_on:
+            - task_key: bronze_ingest
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/silver/create_silver_tables.py
+            parameters:
+              - "--catalog={{job.parameters.catalog}}"
+              - "--bronze-schema={{job.parameters.bronze_schema}}"
+              - "--silver-schema={{job.parameters.silver_schema}}"
+              - "--gold-schema={{job.parameters.gold_schema}}"
+              - "--landing-path={{job.parameters.landing_path}}"
+        - task_key: gold_aggregate
+          depends_on:
+            - task_key: silver_validate
+          environment_key: default
+          spark_python_task:
+            python_file: ../src/gold/create_gold_tables.py
+            parameters:
+              - "--catalog={{job.parameters.catalog}}"
+              - "--bronze-schema={{job.parameters.bronze_schema}}"
+              - "--silver-schema={{job.parameters.silver_schema}}"
+              - "--gold-schema={{job.parameters.gold_schema}}"
+              - "--landing-path={{job.parameters.landing_path}}"
+      environments:
+        - environment_key: default
+          spec:
+            # CLI schema field is `client` (serverless environment version).
+            client: "2"

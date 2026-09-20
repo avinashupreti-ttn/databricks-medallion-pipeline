@@ -1,0 +1,15 @@
+# AI/BI (Lakeview) dashboard — Gold-only visualizations.
+# Deployed by the Asset Bundle; warehouse is configurable via var.warehouse_id.
+# dataset_catalog / dataset_schema bind unqualified dashboard SQL to the same
+# catalog and gold_schema variables used by the pipeline job (CLI 0.283.0+).
+# Fully qualified catalog.schema.table names in .lvdash.json would ignore these.
+# Bronze → Silver → Gold job resource is unchanged.
+
+resources:
+  dashboards:
+    ecommerce_gold_dashboard:
+      display_name: ecommerce-gold-dashboard
+      file_path: ../src/dashboard/ecommerce_gold_dashboard.lvdash.json
+      warehouse_id: ${var.warehouse_id}
+      dataset_catalog: ${var.catalog}
+      dataset_schema: ${var.gold_schema}

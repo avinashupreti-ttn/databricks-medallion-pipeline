@@ -1,0 +1,27 @@
+# Candidate Information
+
+**Name:** Avinash Upreti
+**Role:** ATL
+**Primary Technology Stack:** Python / PySpark, SQL, Databricks
+**Primary AI Tool Used:** Cursor
+**Project Option Selected:** Data Pipeline (Medallion Architecture)
+**Assessment Start Date:** 12th September 2026
+**Submission Date:** 21st September 2026
+
+## Tools & Environment
+
+- Databricks: Free Edition serverless (Unity Catalog)
+- Languages: Python, PySpark, Spark SQL
+- Libraries / platform: Delta Lake, Databricks Asset Bundles, AI/BI dashboards
+- AI Tool: Cursor (Composer agent + project rules)
+- Local tests: pytest + pytest-html
+
+## Setup Summary
+
+1. Land `data/*.csv` on the configured Volume path (regenerate with
+   `python -m src.data_generation.generate_sample_data` if missing).
+2. `databricks bundle deploy -t free --profile <profile>` then
+   `databricks bundle run ecommerce_medallion_pipeline`.
+3. Open the Gold AI/BI dashboard; optionally run
+   `tests/databricks/ts_02_05_serverless_validation.py` for TS-02–TS-05.
+4. Full runbook: `README.md`. Bundle details: `docs/bundle-deployment.md`.
