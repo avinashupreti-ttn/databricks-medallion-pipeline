@@ -76,12 +76,12 @@ T0 Setup ──► T1 Data gen ──► T2 Bronze ──► T3 Silver ──►
 - `src/bronze/01_ingest_customers.py`, `02_ingest_orders.py`, `03_ingest_products.py`, `ingest_all.py`
 
 **Implement**
-- [ ] Create catalog/schema/table setup (`database/schema.sql`) needed for Bronze+
-- [ ] Land three CSVs to bronze Delta tables with metadata; fail fast on missing files
+- [x] Create catalog/schema/table setup (`database/schema.sql`) needed for Bronze+
+- [x] Land three CSVs to bronze Delta tables with metadata; fail fast on missing files
 - [ ] Stage CSVs to configured landing path on Databricks
 
 **Validate / review**
-- [ ] Write tests: serverless checks for row counts / raw preservation (**TS-02**); mark `databricks` so local pytest can skip
+- [x] Write tests: serverless checks for row counts / raw preservation (**TS-02**); mark `databricks` so local pytest can skip
 - [ ] Execute: run Bronze on serverless; run/skip-marked tests as designed
 - [ ] Review: counts match 10k / 100k / 500; defective rows still present
 
@@ -191,7 +191,7 @@ T0 Setup ──► T1 Data gen ──► T2 Bronze ──► T3 Silver ──►
 |---|---|---|---|---|
 | T0 Setup | [ ] | [ ] | [ ] | [ ] |
 | T1 Data gen | [x] | [x] | [x] | [x] |
-| T2 Bronze | [ ] | [ ] | [ ] | [ ] |
+| T2 Bronze | [x] | [x] | [ ] | [ ] |
 | T3 Silver | [ ] | [ ] | [ ] | [ ] |
 | T4 Gold | [ ] | [ ] | [ ] | [ ] |
 | T5 Dashboard | [ ] | [ ] | [ ] | [ ] |
