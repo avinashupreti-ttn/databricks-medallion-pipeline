@@ -1,12 +1,12 @@
 # Candidate Information
 
 **Name:** Avinash Upreti
-**Role:** [fill — SE / SSE / ATL / TL / other]
+**Role:** ATL
 **Primary Technology Stack:** Python / PySpark, SQL, Databricks
 **Primary AI Tool Used:** Cursor
 **Project Option Selected:** Data Pipeline (Medallion Architecture)
-**Assessment Start Date:** [fill]
-**Submission Date:** [fill]
+**Assessment Start Date:** 12th September 2026
+**Submission Date:** 21st September 2026
 
 ## Tools & Environment
 

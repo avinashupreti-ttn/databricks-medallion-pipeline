@@ -21,8 +21,6 @@ Each stage used the engineering contracts as the prompt boundary.
 
 ## What AI Got Wrong
 
-Refinements from `ai-prompts/` where Cursor drafts needed correction:
-
 - **Workflow docs and rules** — over-scoped context (load every engineering doc), mixed sequencing into the spec, put schema/setup too early in T0, and conflated test evidence with `debugging-notes.md`. Refined to task-scoped docs, a lightweight tracker, and short execution summaries beside the tests.
 - **Sample data and local tests** — invented a random ~15% null `payment_date` on Completed orders; planned TS-01 instead of implementing; briefly had a self-tautological `verify_output()` check. Corrected to status-tied payment dates, hardcoded contract pytest expectations, and stop-planning / implement-now discipline.
 - **Bronze / serverless safety** — first ingest used `cache`/`persist` and JVM/`SparkContext` file checks; local helpers hit a Python 3.9 `newline=` issue; explicit `pytest -m databricks` could still skip cleanly. Refined to DataFrame-only checks, fixed helpers, and fail-loud Databricks markers.
