@@ -60,6 +60,7 @@ def test_gold_sql_files_use_pass_only_filters():
     for name in GOLD_SQL_FILES:
         text = (GOLD_SQL_DIR / name).read_text(encoding="utf-8")
         assert "quality_check_result = 'PASS'" in text
+        assert "order_status <> 'Cancelled'" in text
         assert "__GOLD_SCHEMA__" in text
         assert "__SILVER_SCHEMA__" in text
         statements = render_gold_sql(
@@ -70,6 +71,7 @@ def test_gold_sql_files_use_pass_only_filters():
         assert "__GOLD_SCHEMA__" not in joined
         assert "c1_gold" in joined
         assert "quality_check_result = 'PASS'" in joined
+        assert "order_status <> 'Cancelled'" in joined
 
 
 def test_assign_segment_rules():
@@ -103,6 +105,8 @@ def test_sales_by_product_excludes_fail_and_matches_pass_sum(annotated_rows):
     for order in orders:
         if order["quality_check_result"] != "PASS":
             continue
+        if order.get("order_status") == "Cancelled":
+            continue
         if order.get("product_id") in ("", None):
             continue
         product_id = int(order["product_id"])
@@ -115,6 +119,86 @@ def test_sales_by_product_excludes_fail_and_matches_pass_sum(annotated_rows):
         assert row["avg_order_value"] == _money(
             row["total_revenue"] / row["total_orders"]
         )
+
+
+def test_cancelled_orders_contribute_no_revenue(annotated_rows):
+    orders = annotated_rows["orders"]
+    products = annotated_rows["products"]
+    customers = annotated_rows["customers"]
+    cancelled_pass = [
+        row
+        for row in orders
+        if row["quality_check_result"] == "PASS"
+        and row.get("order_status") == "Cancelled"
+    ]
+    assert cancelled_pass, "fixture must include PASS Cancelled orders"
+    cancelled_amount = sum(
+        (_money(row["total_amount"]) for row in cancelled_pass), Decimal("0.00")
+    )
+    assert cancelled_amount > 0
+
+    with_cancelled = Decimal("0.00")
+    without_cancelled = Decimal("0.00")
+    pass_products = {
+        int(row["product_id"])
+        for row in products
+        if row["quality_check_result"] == "PASS"
+    }
+    for order in orders:
+        if order["quality_check_result"] != "PASS":
+            continue
+        if order.get("product_id") in ("", None):
+            continue
+        if int(order["product_id"]) not in pass_products:
+            continue
+        amount = _money(order["total_amount"])
+        with_cancelled += amount
+        if order.get("order_status") != "Cancelled":
+            without_cancelled += amount
+    gold = aggregate_sales_by_product(orders, products)
+    actual = sum((row["total_revenue"] for row in gold), Decimal("0.00"))
+    assert actual == without_cancelled
+    assert actual == with_cancelled - cancelled_amount
+
+    trends = aggregate_daily_weekly_trends(orders)
+    day_orders = sum(
+        row["total_orders"] for row in trends if row["period_grain"] == "DAY"
+    )
+    qualifying = sum(
+        1
+        for row in orders
+        if row["quality_check_result"] == "PASS"
+        and row.get("order_status") != "Cancelled"
+    )
+    assert day_orders == qualifying
+    # Segmentation revenue also excludes Cancelled.
+    segments = aggregate_customer_segmentation(orders, customers)
+    assert sum(row["total_revenue"] for row in segments) == sum(
+        (
+            row["total_revenue"]
+            for row in aggregate_revenue_by_customer(orders, customers)
+        ),
+        Decimal("0.00"),
+    )
+
+
+def test_dashboard_queries_are_catalog_schema_agnostic():
+    sql = (REPO_ROOT / "src/dashboard/dashboard_queries.sql").read_text(
+        encoding="utf-8"
+    )
+    lvdash = (
+        REPO_ROOT / "src/dashboard/ecommerce_gold_dashboard.lvdash.json"
+    ).read_text(encoding="utf-8")
+    resource = (
+        REPO_ROOT / "resources/ecommerce_gold_dashboard.yml"
+    ).read_text(encoding="utf-8")
+    for text in (sql, lvdash):
+        assert "`workspace`.`c1_gold`" not in text
+        assert "workspace.c1_gold" not in text
+        for table in GOLD_TABLES:
+            assert table in text
+    assert "dataset_catalog: ${var.catalog}" in resource
+    assert "dataset_schema: ${var.gold_schema}" in resource
 
 
 def test_revenue_by_customer_excludes_duplicates_and_sets_ltv(annotated_rows):
@@ -154,6 +238,7 @@ def test_daily_weekly_trends_grains(annotated_rows):
         1
         for row in annotated_rows["orders"]
         if row["quality_check_result"] == "PASS"
+        and row.get("order_status") != "Cancelled"
     )
     assert day_orders == pass_order_count
     assert week_orders == pass_order_count
@@ -515,6 +600,7 @@ def test_gold_revenue_reconciles_to_pass_silver(request):
         FROM {orders} o
         INNER JOIN {products} p ON o.product_id = p.product_id
         WHERE o.quality_check_result = 'PASS'
+          AND o.order_status <> 'Cancelled'
           AND p.quality_check_result = 'PASS'
         """
     ).collect()[0]["total"]
@@ -527,13 +613,18 @@ def test_gold_revenue_reconciles_to_pass_silver(request):
         FROM {orders} o
         INNER JOIN {customers} c ON o.customer_id = c.customer_id
         WHERE o.quality_check_result = 'PASS'
+          AND o.order_status <> 'Cancelled'
           AND c.quality_check_result = 'PASS'
         """
     ).collect()[0]["total"]
     actual_customer_revenue = _sum_decimal(spark, gold_customers, "total_revenue")
     assert Decimal(str(expected_customer_revenue)) == actual_customer_revenue
 
-    pass_order_count = _count_where(spark, orders, "quality_check_result = 'PASS'")
+    pass_order_count = _count_where(
+        spark,
+        orders,
+        "quality_check_result = 'PASS' AND order_status <> 'Cancelled'",
+    )
     day_orders = _count_where(spark, gold_trends, "period_grain = 'DAY'")
     # day grain row count is periods, not orders — compare summed orders
     day_order_sum = spark.sql(

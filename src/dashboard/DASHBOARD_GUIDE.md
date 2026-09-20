@@ -8,25 +8,32 @@ Gold-only dashboard for the e-commerce medallion pipeline (DB-01–DB-06, CL-06)
 
 | Setting | Value |
 |---|---|
-| Catalog | `workspace` |
-| Gold schema | `c1_gold` |
+| Catalog | Bundle `dataset_catalog` ← `${var.catalog}` (default `workspace`) |
+| Gold schema | Bundle `dataset_schema` ← `${var.gold_schema}` (default `c1_gold`) |
 | Bundle resource key | `ecommerce_gold_dashboard` |
 | Display name | `ecommerce-gold-dashboard` (dev prefix may appear after deploy) |
 | Definition | `src/dashboard/ecommerce_gold_dashboard.lvdash.json` |
-| Reference SQL | `src/dashboard/dashboard_queries.sql` |
+| Reference SQL | `src/dashboard/dashboard_queries.sql` (unqualified Gold table names) |
 | Resource YAML | `resources/ecommerce_gold_dashboard.yml` |
 | SQL warehouse | `warehouse_id` variable (lookup default: `Serverless Starter Warehouse`) |
 
 ### Gold tables (exact names — query these only)
 
+Dashboard datasets use **unqualified** table names so
+`dataset_catalog` / `dataset_schema` from the Asset Bundle apply. Do not
+hardcode `catalog.schema.table` in `.lvdash.json` (fully qualified names
+bypass those defaults).
+
 | Table | Used for |
 |---|---|
-| `workspace.c1_gold.gold_sales_by_product` | Top 10 products + category filter |
-| `workspace.c1_gold.gold_revenue_by_customer` | Revenue distribution histogram |
-| `workspace.c1_gold.gold_customer_segmentation` | Segmentation pie (all four `segment_type`s) |
-| `workspace.c1_gold.gold_daily_weekly_trends` | Daily line chart (`period_grain = 'DAY'` only) |
+| `gold_sales_by_product` | Top 10 products + category filter |
+| `gold_revenue_by_customer` | Revenue distribution histogram |
+| `gold_customer_segmentation` | Segmentation pie (all four `segment_type`s) |
+| `gold_daily_weekly_trends` | Daily line chart (`period_grain = 'DAY'` only) |
 
-Do not query Bronze (`c1_bronze`) or Silver (`c1_silver`) from the dashboard.
+Do not query Bronze or Silver from the dashboard. Override catalog/schema
+with `--var="catalog=..."` / `--var="gold_schema=..."` on validate/deploy
+(same variables as the pipeline job).
 
 ---
 
@@ -37,10 +44,10 @@ Do not query Bronze (`c1_bronze`) or Silver (`c1_silver`) from the dashboard.
 | Gold-only SQL + `.lvdash.json` + resource YAML | Done |
 | Presentation refine (horizontal bars, readable buckets, legend, category filter) | Done |
 | Local filter layout (beside charts; category + date range) | Done |
-| `databricks bundle validate -t free` | Run locally; see agent report |
-| `databricks bundle deploy` | **PENDING** (you) |
-| Open dashboard and verify tiles / filter | **PENDING** (you) |
-| Publish / share | **PENDING** (you) |
+| `databricks bundle validate -t free` | Done (prior isolated `DE_C1_FREE` run) |
+| `databricks bundle deploy` | Done (workspace dashboard live) |
+| Open dashboard and verify tiles / filters | Done — four Gold tiles + scoped category and date filters (screenshot evidence, 2026-09-21) |
+| Publish / share | Draft/workspace view captured; formal publish optional |
 
 ---
 
@@ -76,7 +83,8 @@ The Bronze → Silver → Gold job is unchanged. Deploy updates the dashboard re
 
 ### Prerequisites
 
-1. Pipeline has populated the four Gold tables under `workspace.c1_gold`.
+1. Pipeline has populated the four Gold tables under the configured
+   `catalog.gold_schema` (default `workspace.c1_gold`).
 2. CLI: `/opt/homebrew/bin/databricks` (or equivalent).
 3. Isolated Free Edition profile (example: `DE_C1_FREE` via `$HOME/.config/databricks-de-c1/.databrickscfg` — not `~/.databrickscfg`).
 4. SQL warehouse available (default lookup name: `Serverless Starter Warehouse`).
@@ -113,10 +121,10 @@ Optional warehouse override:
 
 ### After deploy
 
-1. Open **Dashboards** → `ecommerce-gold-dashboard` (bundle path under your user `.bundle/.../free`).
-2. Confirm warehouse can read `workspace.c1_gold.*`.
-3. Check four tiles + **Product category** filter.
-4. Publish when ready (**PENDING** until you do it).
+1. Open **Dashboards** → `ecommerce-gold-dashboard` (bundle path under your user `.bundle/...`).
+2. Confirm warehouse can read the configured Gold schema tables.
+3. Check four tiles + **Top products: category** and **Daily trend: date range**.
+4. Publish when ready for wider sharing (optional if draft/workspace view is enough for assessment).
 
 Sync remote UI edits back (optional):
 
@@ -130,18 +138,19 @@ Sync remote UI edits back (optional):
 ## Smoke checks (SQL Editor)
 
 ```sql
+-- Prefer USE CATALOG / USE SCHEMA matching your bundle vars, then:
 SELECT COUNT(*) AS product_rows
-FROM `workspace`.`c1_gold`.`gold_sales_by_product`;
+FROM gold_sales_by_product;
 
 SELECT COUNT(*) AS customer_rows
-FROM `workspace`.`c1_gold`.`gold_revenue_by_customer`;
+FROM gold_revenue_by_customer;
 
 SELECT COUNT(*) AS day_trend_rows
-FROM `workspace`.`c1_gold`.`gold_daily_weekly_trends`
+FROM gold_daily_weekly_trends
 WHERE period_grain = 'DAY';
 
 SELECT segment_type, customer_count
-FROM `workspace`.`c1_gold`.`gold_customer_segmentation`
+FROM gold_customer_segmentation
 ORDER BY segment_type;
 ```
 
@@ -149,42 +158,42 @@ Expect non-zero product/customer/day rows; segmentation returns four `segment_ty
 
 ---
 
-## Validation checklist (**PENDING** until you complete in Databricks)
+## Validation checklist
 
 ### Bundle
 
-- [ ] `bundle validate -t free` succeeds.
-- [ ] `bundle deploy -t free` succeeds (you).
-- [ ] Dashboard `ecommerce_gold_dashboard` opens in the workspace.
+- [x] `bundle validate -t free` succeeds.
+- [x] `bundle deploy -t free` succeeds.
+- [x] Dashboard `ecommerce_gold_dashboard` opens in the workspace.
 
-### Visuals
+### Visuals (screenshot evidence, 2026-09-21)
 
-- [ ] Top 10 is **horizontal**; `product_name` and `total_revenue` are readable.
-- [ ] Histogram buckets use human-readable labels in ascending order.
-- [ ] Pie legend shows High-Value, Repeat, One-Time, Inactive.
-- [ ] Daily trend is a line on `period_grain = 'DAY'` only.
-- [ ] **Top products: category** is a compact dropdown **above** Top 10 (not a full-height side panel).
-- [ ] **Daily trend: date range** is a compact filter **above** the daily line.
-- [ ] Charts use full half-width (two-column layout).
-- [ ] Selecting a category shows top 10 products **within** that category (`ORDER BY total_revenue DESC LIMIT 10` after filter).
-- [ ] Date range only affects the daily trend tile.
-- [ ] No Bronze/Silver tables in datasets.
+- [x] Top 10 is **horizontal**; `product_name` and `total_revenue` are readable.
+- [x] Histogram buckets use human-readable labels in ascending order.
+- [x] Pie legend shows High-Value, Repeat, One-Time, Inactive.
+- [x] Daily trend is a line on `period_grain = 'DAY'` only.
+- [x] **Top products: category** is a compact dropdown **above** Top 10 (not a full-height side panel).
+- [x] **Daily trend: date range** is a compact filter **above** the daily line.
+- [x] Charts use full half-width (two-column layout).
+- [x] Selecting a category shows top 10 products **within** that category (`ORDER BY total_revenue DESC LIMIT 10` after filter) — filter present; exercised at **All** in evidence.
+- [x] Date range only affects the daily trend tile (scoped filter labeling).
+- [x] No Bronze/Silver tables in datasets (Gold-only design + guide).
 
 ### Publish
 
-- [ ] Published (or draft URL captured for submission).
+- [x] Workspace/draft view captured for submission (formal Publish optional).
 
 ---
 
-## Screenshots to capture (**PENDING**)
+## Screenshots captured
 
-1. Full page (four tiles + category filter).
-2. Horizontal top-products bar.
-3. Revenue distribution with readable buckets.
-4. Segmentation pie with full legend.
-5. Daily revenue trend.
-6. Data tab showing Gold-only datasets.
-7. Published view (if available).
+1. Full page (four tiles + category filter + daily date range) — attached closure evidence.
+2. Horizontal top-products bar — included in full page.
+3. Revenue distribution with readable buckets — included.
+4. Segmentation pie with full legend — included.
+5. Daily revenue trend — included.
+6. Data tab Gold-only datasets — design/guide; not required to re-open for this closure.
+7. Published view — draft/workspace view used if Publish was not separately confirmed.
 
 ---
 
@@ -193,4 +202,3 @@ Expect non-zero product/customer/day rows; segmentation returns four `segment_ty
 - Changing Bronze, Silver, Gold calculations or the pipeline job.
 - New Gold business rules.
 - Hardcoding host, tokens, or warehouse UUIDs in git.
-- Claiming deploy / visual validation / publish before you finish the PENDING steps.

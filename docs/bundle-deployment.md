@@ -101,6 +101,11 @@ Job flow: `bronze_ingest` → (on success) → `silver_validate` → (on success
 | `landing_path`           | `/Volumes/workspace/c1_landing/landing` |
 | `warehouse_id`           | Lookup: `Serverless Starter Warehouse` (override with `--var`) |
 
+Dashboard resource `ecommerce_gold_dashboard` also binds:
+`dataset_catalog=${var.catalog}` and `dataset_schema=${var.gold_schema}`
+so unqualified Gold table names in `.lvdash.json` follow the same overrides
+as the pipeline job (requires Databricks CLI ≥ 0.283.0).
+
 Defaults are passed as CLI flags to `src/bronze/ingest_all.py`,
 `src/silver/create_silver_tables.py`, and `src/gold/create_gold_tables.py`.
 Change them per clone with `--var` at validate/deploy time or by editing
@@ -128,12 +133,9 @@ databricks bundle run ecommerce_medallion_pipeline -t free --profile DE_C1_FREE
 
 That profile’s config file is separate from `~/.databrickscfg`.
 
-## Pending workspace checks
+## Workspace validation evidence
 
-After a successful deploy + run on serverless, still pending:
-
-1. TS-02 Databricks markers in `tests/test_bronze_ingestion.py`
-2. TS-03 / TS-04 Databricks markers in `tests/test_silver_validation.py`
-3. TS-05 Databricks markers in `tests/test_gold_aggregations.py`
-
-Do not treat those as passed until they execute on Databricks.
+Serverless Bronze → Silver → Gold job and table contracts are recorded under
+`tests/summary/` (`ts-02` … `ts-07`). The Gold AI/BI dashboard is deployed and
+visually verified (four tiles + scoped filters); see
+`src/dashboard/DASHBOARD_GUIDE.md`.

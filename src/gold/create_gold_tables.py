@@ -96,6 +96,15 @@ def _pass_rows(rows: list) -> list:
     return [row for row in rows if row.get("quality_check_result") == "PASS"]
 
 
+def _qualifying_orders(orders: list) -> list:
+    """PASS orders that contribute to Gold metrics (Cancelled excluded)."""
+    return [
+        row
+        for row in _pass_rows(orders)
+        if row.get("order_status") != "Cancelled"
+    ]
+
+
 def percentile_nearest_rank(values: list[Decimal], pct: float) -> Decimal:
     """Inclusive nearest-rank percentile (matches Spark percentile intent for tests)."""
     if not values:
@@ -120,12 +129,12 @@ def assign_segment(order_count: int, total_revenue: Decimal, high_value_threshol
 
 
 def aggregate_sales_by_product(orders: list, products: list) -> list[dict]:
-    """Local GD-01 mirror: PASS orders joined to PASS products."""
+    """Local GD-01 mirror: qualifying PASS orders joined to PASS products."""
     products_by_id = {
         _as_int(row["product_id"]): row for row in _pass_rows(products)
     }
     buckets: dict[int, dict] = {}
-    for order in _pass_rows(orders):
+    for order in _qualifying_orders(orders):
         product_id = _as_int(order.get("product_id"))
         product = products_by_id.get(product_id)
         if product is None:
@@ -160,12 +169,12 @@ def aggregate_sales_by_product(orders: list, products: list) -> list[dict]:
 
 
 def aggregate_revenue_by_customer(orders: list, customers: list) -> list[dict]:
-    """Local GD-02 mirror: PASS orders joined to PASS customers."""
+    """Local GD-02 mirror: qualifying PASS orders joined to PASS customers."""
     customers_by_id = {
         _as_int(row["customer_id"]): row for row in _pass_rows(customers)
     }
     buckets: dict[int, dict] = {}
-    for order in _pass_rows(orders):
+    for order in _qualifying_orders(orders):
         customer_id = _as_int(order.get("customer_id"))
         customer = customers_by_id.get(customer_id)
         if customer is None:
@@ -201,7 +210,7 @@ def aggregate_revenue_by_customer(orders: list, customers: list) -> list[dict]:
 
 
 def aggregate_daily_weekly_trends(orders: list) -> list[dict]:
-    """Local GD-03 mirror: DAY and ISO-Monday WEEK grains from PASS orders."""
+    """Local GD-03 mirror: DAY and ISO-Monday WEEK grains from qualifying orders."""
     from datetime import date, timedelta
 
     def iso_week_start(value: date) -> date:
@@ -213,7 +222,7 @@ def aggregate_daily_weekly_trends(orders: list) -> list[dict]:
     week_buckets: dict[date, dict] = defaultdict(
         lambda: {"total_orders": 0, "total_revenue": Decimal("0.00")}
     )
-    for order in _pass_rows(orders):
+    for order in _qualifying_orders(orders):
         raw = order.get("order_date")
         if hasattr(raw, "year"):
             order_day = raw if isinstance(raw, date) else raw.date()
@@ -258,7 +267,7 @@ def aggregate_customer_segmentation(orders: list, customers: list) -> list[dict]
         for row in pass_customers
         if _as_int(row["customer_id"]) is not None
     }
-    for order in _pass_rows(orders):
+    for order in _qualifying_orders(orders):
         customer_id = _as_int(order.get("customer_id"))
         if customer_id not in metrics:
             continue

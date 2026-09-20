@@ -1,5 +1,9 @@
 -- T5 Databricks AI/BI dashboard datasets (Gold only — DB-06 / CL-06).
--- Catalog/schema: workspace.c1_gold
+-- Table names are unqualified on purpose. The Asset Bundle sets
+-- dataset_catalog / dataset_schema on the dashboard resource from
+-- ${var.catalog} / ${var.gold_schema} (defaults: workspace / c1_gold).
+-- Fully qualified catalog.schema.table names would ignore those defaults.
+--
 -- Gold tables: gold_sales_by_product, gold_revenue_by_customer,
 --              gold_customer_segmentation, gold_daily_weekly_trends
 --
@@ -16,7 +20,6 @@
 
 -- ---------------------------------------------------------------------------
 -- Dataset 1 — Top 10 products by revenue (DB-02, horizontal bar)
--- Source: workspace.c1_gold.gold_sales_by_product
 -- :category_filter is applied BEFORE ORDER BY / LIMIT 10 so a selection
 -- returns the top 10 products within the chosen category/categories.
 -- Empty selection (size = 0) means all categories.
@@ -29,7 +32,7 @@ SELECT
   total_orders,
   total_revenue,
   avg_order_value
-FROM `workspace`.`c1_gold`.`gold_sales_by_product`
+FROM gold_sales_by_product
 WHERE (size(:category_filter) = 0 OR array_contains(:category_filter, category))
 ORDER BY total_revenue DESC
 LIMIT 10
@@ -40,13 +43,12 @@ LIMIT 10
 -- ---------------------------------------------------------------------------
 SELECT DISTINCT
   category
-FROM `workspace`.`c1_gold`.`gold_sales_by_product`
+FROM gold_sales_by_product
 ORDER BY category
 ;
 
 -- ---------------------------------------------------------------------------
 -- Dataset 2 — Customer revenue distribution (DB-03, histogram-style bar)
--- Source: workspace.c1_gold.gold_revenue_by_customer
 -- Human-readable bucket labels; bucket_sort keeps ascending order.
 -- Presentation-only bins; does not change Gold calculations.
 -- ---------------------------------------------------------------------------
@@ -71,14 +73,13 @@ SELECT
   END AS bucket_sort,
   COUNT(*) AS customer_count,
   CAST(SUM(total_revenue) AS DECIMAL(18, 2)) AS bucket_total_revenue
-FROM `workspace`.`c1_gold`.`gold_revenue_by_customer`
+FROM gold_revenue_by_customer
 GROUP BY 1, 2
 ORDER BY bucket_sort
 ;
 
 -- ---------------------------------------------------------------------------
 -- Dataset 3 — Customer segmentation (DB-04, pie chart)
--- Source: workspace.c1_gold.gold_customer_segmentation
 -- Includes all four segment_type rows (Inactive may be zero-count).
 -- ---------------------------------------------------------------------------
 SELECT
@@ -86,7 +87,7 @@ SELECT
   customer_count,
   avg_revenue,
   total_revenue
-FROM `workspace`.`c1_gold`.`gold_customer_segmentation`
+FROM gold_customer_segmentation
 ORDER BY
   CASE segment_type
     WHEN 'High-Value' THEN 1
@@ -99,22 +100,21 @@ ORDER BY
 
 -- ---------------------------------------------------------------------------
 -- Dataset 4 — Daily revenue trend (line chart; period_grain = 'DAY' only)
--- Source: workspace.c1_gold.gold_daily_weekly_trends
 -- ---------------------------------------------------------------------------
 SELECT
   period_start,
   period_grain,
   total_orders,
   total_revenue
-FROM `workspace`.`c1_gold`.`gold_daily_weekly_trends`
+FROM gold_daily_weekly_trends
 WHERE period_grain = 'DAY'
 ORDER BY period_start
 ;
 
 -- ---------------------------------------------------------------------------
--- Smoke checks (SQL editor only — not dashboard datasets)
+-- Smoke checks (SQL editor): qualify with your catalog.gold_schema if needed
 -- ---------------------------------------------------------------------------
--- SELECT COUNT(*) AS product_rows FROM `workspace`.`c1_gold`.`gold_sales_by_product`;
--- SELECT COUNT(*) AS customer_rows FROM `workspace`.`c1_gold`.`gold_revenue_by_customer`;
--- SELECT COUNT(*) AS day_trend_rows FROM `workspace`.`c1_gold`.`gold_daily_weekly_trends` WHERE period_grain = 'DAY';
--- SELECT * FROM `workspace`.`c1_gold`.`gold_customer_segmentation` ORDER BY segment_type;
+-- SELECT COUNT(*) AS product_rows FROM gold_sales_by_product;
+-- SELECT COUNT(*) AS customer_rows FROM gold_revenue_by_customer;
+-- SELECT COUNT(*) AS day_trend_rows FROM gold_daily_weekly_trends WHERE period_grain = 'DAY';
+-- SELECT * FROM gold_customer_segmentation ORDER BY segment_type;

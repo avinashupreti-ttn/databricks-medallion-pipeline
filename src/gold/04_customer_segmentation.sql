@@ -2,6 +2,7 @@
 -- High-Value threshold = 90th percentile of total_revenue among customers with orders.
 -- Assignment (first match): Inactive → High-Value → Repeat → One-Time.
 -- Always emit all four segment_type rows (counts may be zero).
+-- Cancelled orders contribute no revenue and are excluded from Gold metrics.
 -- See design-notes.md (CL-03).
 
 CREATE OR REPLACE TABLE `__CATALOG__`.`__GOLD_SCHEMA__`.`gold_customer_segmentation` AS
@@ -14,6 +15,7 @@ pass_orders AS (
   SELECT customer_id, total_amount
   FROM `__CATALOG__`.`__SILVER_SCHEMA__`.`silver_orders`
   WHERE quality_check_result = 'PASS'
+    AND order_status <> 'Cancelled'
 ),
 customer_metrics AS (
   SELECT

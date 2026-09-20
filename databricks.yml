@@ -36,13 +36,19 @@ sync:
   include:
     - src/**
     - database/**
+    # Sole tests/ artifact synced: serverless TS-02–TS-05 validation notebook.
+    - tests/databricks/ts_02_05_serverless_validation.py
   exclude:
+    # Keep pytest modules, execution summaries, HTML reports, screenshots, and
+    # any other tests/ scripts local. gitignore-style negation re-allows only
+    # the validation notebook (and its parent dir) after tests/**.
     - tests/**
+    - "!tests/databricks/"
+    - "!tests/databricks/ts_02_05_serverless_validation.py"
     - data/**
     - ai-prompts/**
     - tool-specific/**
     - .venv/**
-    - tests/reports/**
     # Dashboard JSON is deployed as a dashboard resource, not synced as a file.
     - src/dashboard/*.lvdash.json
 

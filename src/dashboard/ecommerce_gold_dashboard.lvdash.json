@@ -3,7 +3,7 @@
     {
       "name": "ds01prod",
       "displayName": "top_10_products_by_revenue",
-      "query": "SELECT\n  product_id,\n  product_name,\n  category,\n  total_orders,\n  total_revenue,\n  avg_order_value\nFROM `workspace`.`c1_gold`.`gold_sales_by_product`\nWHERE (size(:category_filter) = 0 OR array_contains(:category_filter, category))\nORDER BY total_revenue DESC\nLIMIT 10",
+      "query": "SELECT\n  product_id,\n  product_name,\n  category,\n  total_orders,\n  total_revenue,\n  avg_order_value\nFROM `gold_sales_by_product`\nWHERE (size(:category_filter) = 0 OR array_contains(:category_filter, category))\nORDER BY total_revenue DESC\nLIMIT 10",
       "parameters": [
         {
           "keyword": "category_filter",
@@ -22,22 +22,22 @@
     {
       "name": "ds01cats",
       "displayName": "product_categories",
-      "query": "SELECT DISTINCT\n  category\nFROM `workspace`.`c1_gold`.`gold_sales_by_product`\nORDER BY category"
+      "query": "SELECT DISTINCT\n  category\nFROM `gold_sales_by_product`\nORDER BY category"
     },
     {
       "name": "ds02revd",
       "displayName": "customer_revenue_distribution",
-      "query": "SELECT\n  CASE\n    WHEN total_revenue < 100 THEN '$0–$99'\n    WHEN total_revenue < 250 THEN '$100–$249'\n    WHEN total_revenue < 500 THEN '$250–$499'\n    WHEN total_revenue < 1000 THEN '$500–$999'\n    WHEN total_revenue < 2500 THEN '$1,000–$2,499'\n    WHEN total_revenue < 5000 THEN '$2,500–$4,999'\n    ELSE '$5,000+'\n  END AS revenue_bucket,\n  CASE\n    WHEN total_revenue < 100 THEN 0\n    WHEN total_revenue < 250 THEN 1\n    WHEN total_revenue < 500 THEN 2\n    WHEN total_revenue < 1000 THEN 3\n    WHEN total_revenue < 2500 THEN 4\n    WHEN total_revenue < 5000 THEN 5\n    ELSE 6\n  END AS bucket_sort,\n  COUNT(*) AS customer_count,\n  CAST(SUM(total_revenue) AS DECIMAL(18, 2)) AS bucket_total_revenue\nFROM `workspace`.`c1_gold`.`gold_revenue_by_customer`\nGROUP BY 1, 2\nORDER BY bucket_sort"
+      "query": "SELECT\n  CASE\n    WHEN total_revenue < 100 THEN '$0–$99'\n    WHEN total_revenue < 250 THEN '$100–$249'\n    WHEN total_revenue < 500 THEN '$250–$499'\n    WHEN total_revenue < 1000 THEN '$500–$999'\n    WHEN total_revenue < 2500 THEN '$1,000–$2,499'\n    WHEN total_revenue < 5000 THEN '$2,500–$4,999'\n    ELSE '$5,000+'\n  END AS revenue_bucket,\n  CASE\n    WHEN total_revenue < 100 THEN 0\n    WHEN total_revenue < 250 THEN 1\n    WHEN total_revenue < 500 THEN 2\n    WHEN total_revenue < 1000 THEN 3\n    WHEN total_revenue < 2500 THEN 4\n    WHEN total_revenue < 5000 THEN 5\n    ELSE 6\n  END AS bucket_sort,\n  COUNT(*) AS customer_count,\n  CAST(SUM(total_revenue) AS DECIMAL(18, 2)) AS bucket_total_revenue\nFROM `gold_revenue_by_customer`\nGROUP BY 1, 2\nORDER BY bucket_sort"
     },
     {
       "name": "ds03segm",
       "displayName": "customer_segmentation",
-      "query": "SELECT\n  segment_type,\n  customer_count,\n  avg_revenue,\n  total_revenue\nFROM `workspace`.`c1_gold`.`gold_customer_segmentation`\nORDER BY\n  CASE segment_type\n    WHEN 'High-Value' THEN 1\n    WHEN 'Repeat' THEN 2\n    WHEN 'One-Time' THEN 3\n    WHEN 'Inactive' THEN 4\n    ELSE 5\n  END"
+      "query": "SELECT\n  segment_type,\n  customer_count,\n  avg_revenue,\n  total_revenue\nFROM `gold_customer_segmentation`\nORDER BY\n  CASE segment_type\n    WHEN 'High-Value' THEN 1\n    WHEN 'Repeat' THEN 2\n    WHEN 'One-Time' THEN 3\n    WHEN 'Inactive' THEN 4\n    ELSE 5\n  END"
     },
     {
       "name": "ds04dayt",
       "displayName": "daily_revenue_trend",
-      "query": "SELECT\n  period_start,\n  period_grain,\n  total_orders,\n  total_revenue\nFROM `workspace`.`c1_gold`.`gold_daily_weekly_trends`\nWHERE period_grain = 'DAY'\nORDER BY period_start"
+      "query": "SELECT\n  period_start,\n  period_grain,\n  total_orders,\n  total_revenue\nFROM `gold_daily_weekly_trends`\nWHERE period_grain = 'DAY'\nORDER BY period_start"
     }
   ],
   "pages": [
@@ -49,7 +49,7 @@
         {
           "widget": {
             "name": "txt01hdr",
-            "textbox_spec": "# E-commerce Gold dashboard\n\nGold-only tiles from `workspace.c1_gold`. Filters sit above their charts (two-column layout)."
+            "textbox_spec": "# E-commerce Gold dashboard\n\nGold-only tiles (catalog/schema from bundle `dataset_catalog` / `dataset_schema`). Filters sit above their charts (two-column layout)."
           },
           "position": {
             "x": 0,

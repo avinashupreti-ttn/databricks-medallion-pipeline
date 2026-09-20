@@ -10,6 +10,8 @@ Refinements use Reason → Changes Requested → Cursor Implementation → Revie
 
 ---
 
+
+
 ## 1. Align pipeline config with Databricks Free Edition
 
 **Prompt / Request**  
@@ -30,6 +32,8 @@ No separate review recorded; work continued into Asset Bundle setup (§2).
 
 ---
 
+
+
 ## 2. Minimal Databricks Asset Bundle (Bronze → Silver)
 
 **Prompt / Request**  
@@ -47,6 +51,8 @@ You confirmed Terraform v1.14.1 is already at `/opt/homebrew/bin/terraform` and 
 
 ---
 
+
+
 ## 3. Bundle validate with existing Terraform binary
 
 **Reason for Refinement**  
@@ -63,12 +69,14 @@ Validated with:
 `DATABRICKS_TF_VERSION=1.5.5` (version string this CLI expects),  
 `databricks bundle validate -t free --profile DE_C1_FREE`.
 
-Result: **Validation OK!** Host Free Databricks, user `avinash.upreti@tothenew.com`, target `free`. Documented those env vars in `docs/bundle-deployment.md`. No deploy or run.
+Result: **Validation OK!** Host Free Databricks, user `avinash.upreti`, target `free`. Documented those env vars in `docs/bundle-deployment.md`. No deploy or run.
 
 **Review / Decision**  
 Accepted; next activity was a live serverless startup failure (§4).
 
 ---
+
+
 
 ## 4. Fix `__file__` NameError on spark_python_task
 
@@ -90,6 +98,8 @@ Bronze then ingested successfully on serverless; a new IPython exit issue appear
 
 ---
 
+
+
 ## 5. Avoid SystemExit(0) under IPython / spark_python_task
 
 **Reason for Refinement**  
@@ -110,14 +120,19 @@ No further review recorded in this conversation after the local run. Deploy/re-r
 
 ---
 
+
+
 ## Summary
 
-| Item | Outcome in this conversation |
-|---|---|
-| Free Edition config | Separate configurable bronze/silver schemas; landing Volume path; Gold name optional/context only |
-| Asset Bundle | `databricks.yml` + `resources/bronze_silver_job.yml` + `docs/bundle-deployment.md`; Silver `depends_on` Bronze |
-| Bundle validate | OK against C1 host with isolated profile + existing Terraform via CLI env vars; no deploy/run by Cursor |
-| `__file__` fix | Frame `co_filename` fallback in both entry points; local exec tests |
-| `SystemExit(0)` fix | `finish()` raises only on nonzero status |
-| Local pytest (latest entry-point suite) | 47 passed, 9 skipped (23.76s) |
-| Left open | Workspace re-run after SystemExit fix; TS-02 / TS-03 / TS-04 `databricks` markers still not executed in this log |
+
+| Item                                    | Outcome in this conversation                                                                                     |
+| --------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
+| Free Edition config                     | Separate configurable bronze/silver schemas; landing Volume path; Gold name optional/context only                |
+| Asset Bundle                            | `databricks.yml` + `resources/bronze_silver_job.yml` + `docs/bundle-deployment.md`; Silver `depends_on` Bronze   |
+| Bundle validate                         | OK against C1 host with isolated profile + existing Terraform via CLI env vars; no deploy/run by Cursor          |
+| `__file__` fix                          | Frame `co_filename` fallback in both entry points; local exec tests                                              |
+| `SystemExit(0)` fix                     | `finish()` raises only on nonzero status                                                                         |
+| Local pytest (latest entry-point suite) | 47 passed, 9 skipped (23.76s)                                                                                    |
+| Left open                               | Workspace re-run after SystemExit fix; TS-02 / TS-03 / TS-04 `databricks` markers still not executed in this log |
+
+

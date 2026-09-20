@@ -14,7 +14,7 @@ python src/data_generation/generate_sample_data.py --seed 42
 
 `--seed` defaults to **42**. `--output-dir` defaults to `data/`. A rerun overwrites the three CSVs. The same seed writes the same bytes (`\n` line endings, UTF-8, no BOM).
 
-After writing, the script re-reads the CSVs and exits non-zero if measured counts do not match the contract. That check is not the pytest suite. TS-01 is `tests/test_data_generation.py`; the run summary is `tests/ts-01-execution.md`.
+After writing, the script re-reads the CSVs and exits non-zero if measured counts do not match the contract. That check is not the pytest suite. TS-01 is `tests/test_data_generation.py`; the run summary is `tests/summary/ts-01-execution.md`.
 
 ## Method
 
