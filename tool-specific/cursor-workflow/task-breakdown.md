@@ -100,12 +100,12 @@ T0 Setup ──► T1 Data gen ──► T2 Bronze ──► T3 Silver ──►
 - DQ metrics output (table or export per DQ strategy)
 
 **Implement**
-- [ ] Wire core four checks; retain rows; set `quality_check_result` / `failed_checks`
-- [ ] Produce quality metrics report
+- [x] Wire core four checks; retain rows; set `quality_check_result` / `failed_checks`
+- [x] Produce quality metrics report
 - [ ] Optional: business-logic check if time remains
 
 **Validate / review**
-- [ ] Write tests: serverless assertions for intentional defect detection and known-good PASS (**TS-03**, **TS-04**); optional unit tests for pure helpers via pytest
+- [x] Write tests: serverless assertions for intentional defect detection and known-good PASS (**TS-03**, **TS-04**); optional unit tests for pure helpers via pytest
 - [ ] Execute: Silver on serverless + pytest (local helpers / skip Databricks markers)
 - [ ] Review: metrics and FAIL rates align with DQ strategy; log only real issues in `debugging-notes.md`
 
@@ -192,7 +192,7 @@ T0 Setup ──► T1 Data gen ──► T2 Bronze ──► T3 Silver ──►
 | T0 Setup | [ ] | [ ] | [ ] | [ ] |
 | T1 Data gen | [x] | [x] | [x] | [x] |
 | T2 Bronze | [x] | [x] | [ ] | [ ] |
-| T3 Silver | [ ] | [ ] | [ ] | [ ] |
+| T3 Silver | [x] | [x] | [ ] | [ ] |
 | T4 Gold | [ ] | [ ] | [ ] | [ ] |
 | T5 Dashboard | [ ] | [ ] | [ ] | [ ] |
 | T6 Final | [ ] | [ ] | [ ] | [ ] |

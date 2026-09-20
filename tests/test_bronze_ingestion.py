@@ -354,12 +354,16 @@ def test_schema_sql_matches_bronze_contract():
         assert parsed == contract
     statements = render_schema_statements("main", "ecommerce")
     rendered = "\n".join(statements)
-    assert len(statements) == 4
+    assert len(statements) == 8
     assert "__CATALOG__" not in rendered
     assert "`main`.`ecommerce`.`bronze_customers`" in rendered
     assert "`main`.`ecommerce`.`bronze_orders`" in rendered
     assert "`main`.`ecommerce`.`bronze_products`" in rendered
-    assert rendered.count("USING DELTA") == 3
+    assert "`main`.`ecommerce`.`silver_customers`" in rendered
+    assert "`main`.`ecommerce`.`silver_orders`" in rendered
+    assert "`main`.`ecommerce`.`silver_products`" in rendered
+    assert "`main`.`ecommerce`.`dq_metrics_report`" in rendered
+    assert rendered.count("USING DELTA") == 7
     with pytest.raises(ValueError, match="Invalid catalog"):
         render_schema_statements("bad name", "ecommerce")
 
